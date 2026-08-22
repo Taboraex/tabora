@@ -86,6 +86,23 @@ const App = {
         inp.focus();
       };
     });
+
+    /* announcement banner pushed from the admin panel */
+    (async () => {
+      try {
+        const r = await fetch(API_BASE + '/api/announce');
+        const d = await r.json();
+        if (d && d.text) {
+          const b = document.createElement('div');
+          b.className = 'announce ' + (d.level || 'info');
+          const s = document.createElement('span'); s.textContent = d.text;
+          const x = document.createElement('button'); x.className = 'ann-x'; x.textContent = '✕';
+          x.onclick = () => b.remove();
+          b.append(s, x);
+          document.body.prepend(b);
+        }
+      } catch (e) { /* offline */ }
+    })();
     document.getElementById('auth-guest').onclick = () => Panels.closeAll();
 
     /* friends panel */

@@ -46,6 +46,14 @@ function rateLimit(ip, key, max, windowMs) {
 async function body(req) {
   try { return await req.json(); } catch { return {}; }
 }
+async function kvGet(db, key) {
+  const r = await db.prepare('SELECT value FROM kv WHERE key=?').bind(key).first();
+  return r ? r.value : null;
+}
+async function kvSet(db, key, value) {
+  await db.prepare('CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)').run();
+  await db.prepare('INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, String(value)).run();
+}
 function publicUser(u) {
   if (!u) return null;
   const { pass, ...rest } = u;
@@ -119,11 +127,190 @@ async function getPrices() {
 }
 
 /* ============================================================ */
+const PANEL_HTML = `<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tabora Admin Panel</title>
+<style>
+*{box-sizing:border-box;margin:0;font-family:Vazirmatn,Segoe UI,Tahoma,sans-serif}
+body{min-height:100vh;background:#070b1c;color:#e8ecff;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;background:
+ radial-gradient(60% 40% at 15% 10%,rgba(34,211,238,.14),transparent 60%),
+ radial-gradient(50% 40% at 85% 20%,rgba(139,92,246,.16),transparent 60%),
+ radial-gradient(60% 50% at 50% 100%,rgba(244,114,182,.10),transparent 60%);pointer-events:none}
+.wrap{max-width:1060px;margin:0 auto;padding:26px 18px 60px;position:relative}
+.hd{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.hd .lg{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:800;font-size:1.2rem;background:linear-gradient(135deg,#22d3ee,#8b5cf6,#f472b6);color:#fff;box-shadow:0 4px 22px rgba(139,92,246,.5)}
+.hd h1{font-size:1.15rem}
+.hd small{opacity:.55;display:block;font-size:.7rem}
+.hd .out{margin-inline-start:auto}
+.card{background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.09);border-radius:18px;padding:18px;backdrop-filter:blur(10px);margin-bottom:16px}
+h2{font-size:.95rem;margin-bottom:12px;opacity:.9}
+.lbl{font-size:.72rem;opacity:.6;display:block;margin:10px 0 5px}
+input,select,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);color:#e8ecff;border-radius:12px;padding:10px 12px;font-size:.85rem;font-family:inherit}
+input:focus,textarea:focus{outline:none;border-color:#22d3ee}
+.btn{border:none;cursor:pointer;border-radius:12px;padding:10px 16px;font-size:.82rem;font-family:inherit;color:#fff;background:linear-gradient(135deg,#22d3ee,#8b5cf6);transition:.2s}
+.btn:hover{filter:brightness(1.15)}
+.btn.gray{background:rgba(255,255,255,.1)}
+.btn.red{background:linear-gradient(135deg,#f43f5e,#b91c1c)}
+.btn.sm{padding:6px 10px;font-size:.72rem;border-radius:9px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.stat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;text-align:center}
+.stat b{font-size:1.5rem;display:block;background:linear-gradient(135deg,#22d3ee,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat span{font-size:.7rem;opacity:.6}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.tabs button{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8ecff;border-radius:999px;padding:8px 16px;cursor:pointer;font-size:.8rem;font-family:inherit}
+.tabs button.on{background:linear-gradient(135deg,#22d3ee,#8b5cf6);border-color:transparent}
+table{width:100%;border-collapse:collapse;font-size:.78rem}
+th,td{padding:9px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:middle}
+th{opacity:.55;font-size:.68rem}
+.badge{border-radius:999px;padding:3px 10px;font-size:.66rem}
+.b-owner{background:rgba(250,204,21,.18);color:#fde047}
+.b-admin{background:rgba(34,211,238,.15);color:#67e8f9}
+.b-user{background:rgba(255,255,255,.08);color:#cbd5e1}
+.msg{border-radius:12px;padding:10px 14px;font-size:.8rem;margin:10px 0;display:none}
+.msg.ok{display:block;background:rgba(34,197,94,.12);color:#86efac;border:1px solid rgba(34,197,94,.3)}
+.msg.er{display:block;background:rgba(244,63,94,.12);color:#fda4af;border:1px solid rgba(244,63,94,.3)}
+pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;overflow:auto;max-height:300px;direction:ltr;text-align:left}
+.loginbox{max-width:380px;margin:12vh auto;text-align:center}
+.loginbox .lg{width:70px;height:70px;font-size:2rem;margin:0 auto 16px;border-radius:20px}
+.bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:10px 0}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#8b5cf6);transition:width .2s}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div id="login" class="loginbox">
+  <div class="lg">T</div>
+  <h1 style="margin-bottom:6px">پنل مدیریت تبورا</h1>
+  <p style="font-size:.75rem;opacity:.6;margin-bottom:18px">Tabora Admin Panel — دسترسی فقط با کلید ادمین</p>
+  <div class="card" style="text-align:right">
+    <span class="lbl">کلید ادمین (ADMIN_KEY)</span>
+    <input id="key" type="password" placeholder="••••••••••••••••" dir="ltr">
+    <div class="msg" id="lmsg"></div>
+    <button class="btn" style="width:100%;margin-top:12px" onclick="doLogin()">ورود به پنل 🔐</button>
+  </div>
+</div>
+<div id="app" class="hide">
+  <div class="hd">
+    <div class="lg">T</div>
+    <div><h1>پنل مدیریت تبورا</h1><small id="who">admin</small></div>
+    <button class="btn gray sm out" onclick="logout()">خروج ↩</button>
+  </div>
+  <div class="tabs">
+    <button class="on" onclick="tab('dash',this)">📊 نمای کلی</button>
+    <button onclick="tab('users',this)">👥 کاربران</button>
+    <button onclick="tab('release',this)"> انتشار</button>
+    <button onclick="tab('ann',this)">📢 اطلاعیه</button>
+    <button onclick="tab('danger',this)">⚠️ منطقه خطر</button>
+  </div>
+  <div class="msg" id="msg"></div>
+
+  <div id="v-dash">
+    <div class="grid" id="stats"></div>
+    <div class="card" style="margin-top:14px">
+      <h2>🔗 دسترسی سریع</h2>
+      <div class="row">
+        <a class="btn sm gray" target="_blank" href="/api/ping">/api/ping</a>
+        <a class="btn sm gray" target="_blank" href="/api/prices">/api/prices</a>
+        <a class="btn sm gray" target="_blank" href="/download?info=1">/download info</a>
+        <a class="btn sm gray" target="_blank" href="/api/announce">/api/announce</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="v-users" class="hide">
+    <div class="card"><h2>👥 مدیریت کاربران</h2><div style="overflow-x:auto"><table id="utable">
+      <tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>تاریخ</th><th>عملیات</th></tr>
+    </table></div></div>
+    <div class="card hide" id="udetail"><h2>🔎 جزئیات کاربر</h2><pre id="upre"></pre></div>
+  </div>
+
+  <div id="v-release" class="hide">
+    <div class="card"><h2>📦 منبع دانلود فعلی</h2>
+      <pre id="relinfo"></pre>
+      <span class="lbl">جایگزینی URL دانلود (اختیاری — خالی یعنی گیت‌هاب)</span>
+      <div class="row">
+        <input id="ovurl" dir="ltr" placeholder="https://…/custom.zip">
+        <button class="btn sm" onclick="saveOv()">ذخیره</button>
+        <button class="btn sm gray" onclick="clearOv()">حذف جایگزینی</button>
+      </div>
+    </div>
+    <div class="card"><h2>⬆️ آپلود مستقیم زیپ در D1 (پشتیبان /download?direct=1)</h2>
+      <input type="file" id="zipfile" accept=".zip">
+      <div class="bar"><i id="prog"></i></div>
+      <div class="row"><button class="btn" onclick="uploadZip()">آپلود زیپ پشتیبان</button><span id="uptxt" style="font-size:.72rem;opacity:.6"></span></div>
+    </div>
+  </div>
+
+  <div id="v-ann" class="hide">
+    <div class="card"><h2>📢 اطلاعیه به همه کاربران اکستنشن</h2>
+      <span class="lbl">متن اطلاعیه (خالی = غیرفعال)</span>
+      <textarea id="anntxt" rows="3" placeholder="مثلاً: نسخه ۱.۰.۸ منتشر شد! از منوی پشتیبانی آپدیت کنید 💜"></textarea>
+      <span class="lbl">سطح</span>
+      <select id="annlvl"><option value="info">info — عادی</option><option value="warn">warn — مهم</option><option value="gold">gold — ویژه</option></select>
+      <div class="row" style="margin-top:12px">
+        <button class="btn" onclick="saveAnn()">انتشار اطلاعیه 📢</button>
+        <button class="btn gray" onclick="clearAnn()">حذف اطلاعیه</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="v-danger" class="hide">
+    <div class="card"><h2>⚠️ منطقه خطر</h2>
+      <div class="row">
+        <button class="btn red" onclick="purgeSessions()">🔥 باطل‌کردن همه نشست‌ها</button>
+        <button class="btn red" onclick="resetUsers()">☠️ حذف همه کاربران</button>
+      </div>
+      <p style="font-size:.7rem;opacity:.5;margin-top:10px">هر دو عمل غیرقابل بازگشت‌اند و بلافاصله روی همه کاربران اثر می‌گذارند.</p>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+function K(){return sessionStorage.getItem('tk')||'';}
+function msg(t,ok){var m=document.getElementById('msg');m.className='msg '+(ok?'ok':'er');m.textContent=t;if(ok)setTimeout(function(){m.className='msg';},4000);}
+function api(path,body){return fetch(path,{method:body?'POST':'GET',headers:{'Content-Type':'application/json','x-admin-key':K()},body:body?JSON.stringify(body):undefined}).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||r.status);return d;});});}
+function doLogin(){var k=document.getElementById('key').value.trim();if(!k)return;sessionStorage.setItem('tk',k);api('/admin/stats').then(function(){enter();}).catch(function(e){var m=document.getElementById('lmsg');m.className='msg er';m.textContent='کلید اشتباه است: '+e.message;sessionStorage.removeItem('tk');});}
+function logout(){sessionStorage.removeItem('tk');location.reload();}
+function enter(){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadDash();}
+function tab(id,btn){['dash','users','release','ann','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='ann')loadAnn();}
+function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});}
+var USERS=[];
+function loadUsers(){api('/admin/users').then(function(d){USERS=d.users;var t=document.getElementById('utable');t.innerHTML='<tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>تاریخ</th><th>عملیات</th></tr>';USERS.forEach(function(u){var tr=document.createElement('tr');tr.innerHTML='<td><b>'+u.username+'</b><br><span style="opacity:.5;font-size:.66rem">'+u.name+'</span></td><td dir="ltr" style="text-align:right">'+u.email+'</td><td><span class="badge b-'+u.role+'">'+u.role+'</span></td><td style="font-size:.66rem;opacity:.6">'+new Date(u.created_at).toLocaleDateString('fa-IR')+'</td><td><select onchange="setRole(\\''+u.username+'\\',this.value)" style="width:auto;padding:4px 8px;font-size:.7rem"><option'+(u.role==='user'?' selected':'')+'>user</option><option'+(u.role==='admin'?' selected':'')+'>admin</option><option'+(u.role==='owner'?' selected':'')+'>owner</option></select> <button class="btn sm gray" onclick="setPass(\\''+u.username+'\\')">🔑</button> <button class="btn sm gray" onclick="viewU(\\''+u.username+'\\')">👁</button> <button class="btn sm red" onclick="delU(\\''+u.username+'\\')">🗑</button></td>';t.appendChild(tr);});});}
+function setRole(u,r){api('/admin/role',{username:u,role:r}).then(function(){msg('نقش '+u+' → '+r,true);loadUsers();}).catch(function(e){msg(e.message);});}
+function setPass(u){var pw=prompt('رمز جدید برای '+u+' (حداقل ۶ کاراکتر):');if(!pw)return;api('/admin/set-pass',{username:u,password:pw}).then(function(){msg('رمز '+u+' تغییر کرد 🔑',true);}).catch(function(e){msg(e.message);});}
+function delU(u){if(!confirm('کاربر '+u+' برای همیشه حذف شود؟'))return;api('/admin/del-user',{username:u}).then(function(){msg(u+' حذف شد',true);loadUsers();}).catch(function(e){msg(e.message);});}
+function viewU(u){var x=USERS.filter(function(i){return i.username===u;})[0];if(!x)return;var d=document.getElementById('udetail');d.classList.remove('hide');document.getElementById('upre').textContent=JSON.stringify(x,null,2);d.scrollIntoView({behavior:'smooth'});}
+function loadRel(){fetch('/download?info=1').then(function(r){return r.json();}).then(function(d){document.getElementById('relinfo').textContent=JSON.stringify(d,null,2);});api('/admin/settings').then(function(s){document.getElementById('ovurl').value=s.settings.download_url||'';});}
+function saveOv(){api('/admin/settings',{settings:{download_url:document.getElementById('ovurl').value.trim()||null}}).then(function(){msg('منبع دانلود ذخیره شد 📦',true);loadRel();}).catch(function(e){msg(e.message);});}
+function clearOv(){api('/admin/settings',{settings:{download_url:null}}).then(function(){msg('جایگزینی حذف شد — گیت‌هاب',true);loadRel();}).catch(function(e){msg(e.message);});}
+function uploadZip(){var f=document.getElementById('zipfile').files[0];if(!f)return msg('اول فایل زیپ را انتخاب کن');var rd=new FileReader();rd.onload=function(){var b64=rd.result.split(',')[1];var CH=500000;document.getElementById('uptxt').textContent='در حال آپلود…';api('/admin/file',{reset:true}).then(function(){var i=0,ord=0;function next(){if(i>=b64.length){document.getElementById('uptxt').textContent='✔ آپلود کامل شد ('+f.name+')';document.getElementById('prog').style.width='100%';return;}var chunk=b64.substr(i,CH);i+=CH;api('/admin/file',{name:f.name,startOrd:ord,chunks:[chunk]}).then(function(){ord++;document.getElementById('prog').style.width=Math.min(100,Math.round(i/b64.length*100))+'%';next();}).catch(function(e){msg(e.message);});}next();}).catch(function(e){msg(e.message);});};rd.readAsDataURL(f);}
+function loadAnn(){api('/admin/settings').then(function(s){document.getElementById('anntxt').value=s.settings.announce_text||'';document.getElementById('annlvl').value=s.settings.announce_level||'info';});}
+function saveAnn(){api('/admin/settings',{settings:{announce_text:document.getElementById('anntxt').value.trim()||null,announce_level:document.getElementById('annlvl').value}}).then(function(){msg('اطلاعیه منتشر شد 📢',true);}).catch(function(e){msg(e.message);});}
+function clearAnn(){api('/admin/settings',{settings:{announce_text:null}}).then(function(){msg('اطلاعیه حذف شد',true);loadAnn();}).catch(function(e){msg(e.message);});}
+function purgeSessions(){if(!confirm('همه نشست‌ها باطل شود؟ همه کاربران باید دوباره وارد شوند.'))return;api('/admin/purge-sessions',{ }).then(function(){msg('نشست‌ها باطل شد 🔥',true);loadDash();}).catch(function(e){msg(e.message);});}
+function resetUsers(){if(!confirm('همه کاربران حذف شوند؟ این عمل غیرقابل بازگشت است!'))return;api('/admin/reset-users',{ }).then(function(){msg('همه کاربران حذف شدند ☠️',true);loadUsers();}).catch(function(e){msg(e.message);});}
+if(K()){api('/admin/stats').then(enter).catch(function(){});}
+</script>
+</body>
+</html>`;
+
+/* ============================================================ */
 async function handle(req, env) {
   if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
   const url = new URL(req.url);
   const p = url.pathname;
   const db = env.DB;
+
+  /* ---------- admin panel UI ---------- */
+  if (p === '/Taaborapanel' || p === '/Taaborapanel/') {
+    return new Response(PANEL_HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+  }
   const ip = req.headers.get('cf-connecting-ip') || 'unknown';
 
   try {
@@ -132,9 +319,10 @@ async function handle(req, env) {
 
     /* ---------- download latest build ---------- */
     if (p === '/download') {
-      /* primary: redirect to the newest public GitHub release asset (stable URL, always latest) */
-      const ghUrl = 'https://github.com/Taboraex/tabora/releases/latest/download/tabora-protected.zip';
-      if (url.searchParams.get('info') === '1') return json({ source: 'github-latest', url: ghUrl });
+      /* primary: admin override URL, else newest public GitHub release asset (stable URL, always latest) */
+      const override = await kvGet(db, 'download_url');
+      const ghUrl = override || 'https://github.com/Taboraex/tabora/releases/latest/download/tabora-protected.zip';
+      if (url.searchParams.get('info') === '1') return json({ source: override ? 'admin-override' : 'github-latest', url: ghUrl });
       if (url.searchParams.get('direct') !== '1') return Response.redirect(ghUrl, 302);
       /* fallback: copy stored in D1 */
       if (url.searchParams.get('info') === '1') {
@@ -164,6 +352,7 @@ async function handle(req, env) {
       if (!hasKey) return err('forbidden', 403);
       await db.prepare('CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, name TEXT, ord INTEGER, data TEXT)').run();
       await db.prepare('CREATE INDEX IF NOT EXISTS idx_files ON files(key, ord)').run();
+      await db.prepare('CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)').run();
       return json({ ok: true });
     }
     if (p === '/admin/file' && req.method === 'POST') {
@@ -191,6 +380,67 @@ async function handle(req, env) {
       return json({ ok: true });
     }
 
+    if (p === '/admin/stats' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      const users = await db.prepare('SELECT COUNT(*) AS c FROM users').first();
+      const staff = await db.prepare("SELECT COUNT(*) AS c FROM users WHERE role IN ('owner','admin')").first();
+      const sess = await db.prepare('SELECT COUNT(*) AS c FROM sessions WHERE expires > ?').bind(Date.now()).first();
+      const files = await db.prepare("SELECT COUNT(*) AS c, MAX(name) AS n FROM files WHERE key='latest'").first();
+      return json({ users: users.c, staff: staff.c, sessions: sess.c, d1_file: files.n || null, time: Date.now() });
+    }
+
+    if (p === '/admin/users' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      const rows = await db.prepare('SELECT id,email,username,name,role,avatar_kind,settings,bookmarks,created_at FROM users ORDER BY created_at ASC').all();
+      return json({ users: rows.results || [] });
+    }
+
+    if (p === '/admin/role' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const role = String(b.role || '');
+      if (!['user', 'admin', 'owner'].includes(role)) return err('bad_role');
+      const r = await db.prepare('UPDATE users SET role=? WHERE username=? OR email=?').bind(role, String(b.username || '').toLowerCase(), String(b.username || '').toLowerCase()).run();
+      return json({ ok: true, changed: r.meta && r.meta.changes });
+    }
+
+    if (p === '/admin/del-user' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const u = await db.prepare('SELECT id FROM users WHERE username=? OR email=?').bind(String(b.username || '').toLowerCase(), String(b.username || '').toLowerCase()).first();
+      if (!u) return err('user_not_found', 404);
+      await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id).run();
+      await db.prepare('DELETE FROM users WHERE id=?').bind(u.id).run();
+      return json({ ok: true });
+    }
+
+    if (p === '/admin/purge-sessions' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      await db.prepare('DELETE FROM sessions').run();
+      return json({ ok: true });
+    }
+
+    if (p === '/admin/settings' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      let s = {};
+      try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      return json({ settings: s });
+    }
+
+    if (p === '/admin/settings' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      let s = {};
+      try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      if (b.settings && typeof b.settings === 'object') {
+        for (const k in b.settings) {
+          if (b.settings[k] === null || b.settings[k] === '') delete s[k]; else s[k] = b.settings[k];
+        }
+      }
+      await kvSet(db, 'settings', JSON.stringify(s));
+      return json({ ok: true, settings: s });
+    }
+
     if (p === '/admin/reset-users' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
       await db.prepare('DELETE FROM messages').run();
@@ -202,6 +452,13 @@ async function handle(req, env) {
 
     /* ---------- prices ---------- */
     if (p === '/api/prices') return json(await getPrices());
+
+    /* ---------- public announcement (set from admin panel) ---------- */
+    if (p === '/api/announce') {
+      let s = {};
+      try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      return json({ text: String(s.announce_text || ''), level: String(s.announce_level || 'info') });
+    }
 
     /* ---------- register ---------- */
     if (p === '/api/register' && req.method === 'POST') {

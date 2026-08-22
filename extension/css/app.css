@@ -543,3 +543,10 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 .eye { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: .95rem; opacity: .5; padding: 4px 6px; }
 .eye:hover { opacity: 1; }
 .eye.on { opacity: 1; filter: drop-shadow(0 0 6px rgba(34,211,238,.8)); }
+
+/* ===== admin announcement banner ===== */
+.announce { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 99; display: flex; gap: 10px; align-items: center; max-width: min(560px, 92vw); padding: 10px 16px; border-radius: 14px; font-size: .8rem; backdrop-filter: blur(12px); background: linear-gradient(135deg, rgba(34,211,238,.2), rgba(139,92,246,.2)); border: 1px solid rgba(34,211,238,.4); box-shadow: 0 8px 30px rgba(0,0,0,.35); }
+.announce.warn { background: linear-gradient(135deg, rgba(251,191,36,.2), rgba(244,63,94,.18)); border-color: rgba(251,191,36,.45); }
+.announce.gold { background: linear-gradient(135deg, rgba(250,204,21,.25), rgba(244,114,182,.2)); border-color: rgba(250,204,21,.5); }
+.ann-x { background: none; border: none; color: inherit; cursor: pointer; opacity: .7; }
+.ann-x:hover { opacity: 1; }
