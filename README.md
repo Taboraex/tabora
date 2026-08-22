@@ -15,7 +15,7 @@
   <a href="#-features--امکانات">Features</a> •
   <a href="#-install--نصب">Install</a> •
   <a href="#-backend">Backend</a> •
-  <a href="https://github.com/NexaExtensionsir/tabora/releases">Releases</a>
+  <a href="https://github.com/Taboraex/tabora/releases">Releases</a>
 </b></p>
 
 <p align="center">
@@ -52,7 +52,7 @@
 
 ## 🚀 Install / نصب
 
-1. Download `tabora-v1.0.0.zip` from the **[Releases](https://github.com/NexaExtensionsir/tabora/releases)** page and unzip it.
+1. Download `tabora-v1.0.0.zip` from the **[Releases](https://github.com/Taboraex/tabora/releases)** page and unzip it.
 2. Open `chrome://extensions` and enable **Developer mode** (top-right).
 3. Click **Load unpacked** and select the extracted folder.
 4. Open a new tab — welcome to Tabora 🎉

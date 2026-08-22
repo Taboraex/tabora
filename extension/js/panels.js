@@ -105,45 +105,170 @@ const Panels = {
     document.getElementById('pf-logout').onclick = () => this.doLogout();
   },
 
+  /* ================= AVATAR PICKER (redesigned) ================= */
+  avCat: 'all',
   openAvatarPicker() {
     const ov = document.getElementById('avatar-overlay');
     ov.classList.add('open');
+    this.renderAvatarChips();
+    this.renderAvatarGrid();
+    this.bindAvatarTabs();
+  },
+
+  avatarCategoryOf(id) {
+    const n = parseInt(id.slice(3), 10);
+    if ([32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,49,50,51,52,53,54,55,56].includes(n)) return 'animals';
+    if ([15,16,17,18,19,30,31,70,71].includes(n)) return 'art';
+    if ([4,10,11,12,13,14,63,64].includes(n)) return 'fun';
+    return 'anime';
+  },
+
+  renderAvatarChips() {
+    const chips = document.getElementById('av-chips');
+    if (!chips) return;
+    const defs = [['all', 'av_all'], ['animals', 'av_animals'], ['anime', 'av_anime'], ['art', 'av_art'], ['fun', 'av_fun']];
+    chips.innerHTML = '';
+    defs.forEach(([id, key]) => {
+      const b = document.createElement('button');
+      b.className = 'ao-chip' + (this.avCat === id ? ' active' : '');
+      b.textContent = id === 'all' ? '✨ ' + I18n.t(key) : I18n.t(key);
+      b.onclick = () => { this.avCat = id; this.renderAvatarChips(); this.renderAvatarGrid(); };
+      chips.appendChild(b);
+    });
+  },
+
+  renderAvatarGrid() {
     const grid = document.getElementById('avatar-grid');
-    if (grid.dataset.done) return;
-    grid.dataset.done = '1';
-    let html = '';
+    if (!grid) return;
+    const current = Store.state.user ? Store.state.user.avatar : '';
+    grid.innerHTML = '';
+    let shown = 0;
     for (let i = 1; i <= 71; i++) {
       const id = 'av-' + String(i).padStart(3, '0');
-      html += `<button class="av-cell" data-av="${id}" loading="lazy"><img loading="lazy" src="assets/avatars/${id}.gif" alt="${id}"></button>`;
+      if (this.avCat !== 'all' && this.avatarCategoryOf(id) !== this.avCat) continue;
+      shown++;
+      const cell = document.createElement('button');
+      cell.className = 'av-cell' + (current === 'bundle:' + id ? ' selected' : '');
+      cell.dataset.av = id;
+      cell.style.animationDelay = (Math.min(shown, 24) * 22) + 'ms';
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.src = 'assets/avatars/' + id + '.gif';
+      img.alt = id;
+      img.onload = () => img.classList.add('ready');
+      cell.appendChild(img);
+      const check = document.createElement('span');
+      check.className = 'av-check';
+      check.textContent = '✓';
+      cell.appendChild(check);
+      cell.onclick = () => this.pickAvatar('bundle:' + id);
+      grid.appendChild(cell);
     }
-    html += `<div class="av-custom">
-      <button class="btn" id="av-upload-btn">📁 ${I18n.t('upload_avatar')}</button>
-      <input id="av-url" placeholder="${I18n.t('avatar_url')} (https://…)">
-      <button class="btn primary" id="av-url-btn">${I18n.t('save')}</button>
-    </div>`;
-    grid.innerHTML = html;
-    grid.querySelectorAll('.av-cell').forEach(c => c.onclick = () => this.pickAvatar('bundle:' + c.dataset.av));
-    grid.querySelector('#av-upload-btn').onclick = () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = 'image/*';
-      inp.onchange = () => {
-        const f = inp.files[0]; if (!f) return;
-        const img = new Image();
-        img.onload = () => {
-          const c = document.createElement('canvas');
-          const sc = Math.min(1, 240 / Math.max(img.width, img.height));
-          c.width = img.width * sc; c.height = img.height * sc;
-          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-          this.pickAvatar(c.toDataURL('image/png'));
-        };
-        img.src = URL.createObjectURL(f);
+    const rnd = document.getElementById('av-random');
+    if (rnd) {
+      rnd.onclick = () => {
+        const cells = [...grid.querySelectorAll('.av-cell')];
+        if (!cells.length) return;
+        rnd.classList.add('rolling');
+        setTimeout(() => rnd.classList.remove('rolling'), 650);
+        const pick = cells[Math.floor(Math.random() * cells.length)];
+        pick.classList.add('flash');
+        setTimeout(() => this.pickAvatar('bundle:' + pick.dataset.av), 420);
       };
-      inp.click();
-    };
-    grid.querySelector('#av-url-btn').onclick = () => {
-      const v = grid.querySelector('#av-url').value.trim();
-      if (v.startsWith('http')) this.pickAvatar(v);
-    };
+    }
+  },
+
+  bindAvatarTabs() {
+    const tabs = document.querySelectorAll('.ao-tab');
+    if (!tabs.length || tabs[0].dataset.bound) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.atab === 'gallery'));
+      return;
+    }
+    tabs.forEach(t => {
+      t.dataset.bound = '1';
+      t.onclick = () => {
+        tabs.forEach(x => x.classList.toggle('active', x === t));
+        ['gallery', 'upload', 'url'].forEach(v => {
+          const p = document.getElementById('avtab-' + v);
+          if (p) p.style.display = t.dataset.atab === v ? 'block' : 'none';
+        });
+      };
+    });
+    /* upload tab */
+    const drop = document.getElementById('av-drop');
+    if (drop && !drop.dataset.bound) {
+      drop.dataset.bound = '1';
+      const filePick = () => {
+        const inp = document.createElement('input');
+        inp.type = 'file'; inp.accept = 'image/*';
+        inp.onchange = () => {
+          const f = inp.files[0]; if (!f) return;
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            const sc = Math.min(1, 240 / Math.max(img.width, img.height));
+            c.width = img.width * sc; c.height = img.height * sc;
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            const data = c.toDataURL('image/png');
+            const pv = document.getElementById('av-up-preview');
+            pv.innerHTML = ''; const im = document.createElement('img'); im.src = data; pv.appendChild(im);
+            const saveBtn = document.getElementById('av-up-save');
+            saveBtn.disabled = false;
+            saveBtn.onclick = () => this.pickAvatar(data);
+          };
+          img.src = URL.createObjectURL(f);
+        };
+        inp.click();
+      };
+      drop.onclick = filePick;
+      drop.ondragover = (e) => { e.preventDefault(); drop.classList.add('hover'); };
+      drop.ondragleave = () => drop.classList.remove('hover');
+      drop.ondrop = (e) => {
+        e.preventDefault(); drop.classList.remove('hover');
+        const f = e.dataTransfer.files[0];
+        if (f && f.type.startsWith('image/')) {
+          const dt = new DataTransfer(); dt.items.add(f);
+          const fake = { files: dt.files };
+          const inp = { files: fake.files, onchange: null };
+          /* reuse same pipeline */
+          const img = new Image();
+          img.onload = () => {
+            const c = document.createElement('canvas');
+            const sc = Math.min(1, 240 / Math.max(img.width, img.height));
+            c.width = img.width * sc; c.height = img.height * sc;
+            c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+            const data = c.toDataURL('image/png');
+            const pv = document.getElementById('av-up-preview');
+            pv.innerHTML = ''; const im = document.createElement('img'); im.src = data; pv.appendChild(im);
+            const saveBtn = document.getElementById('av-up-save');
+            saveBtn.disabled = false;
+            saveBtn.onclick = () => this.pickAvatar(data);
+          };
+          img.src = URL.createObjectURL(f);
+        }
+      };
+    }
+    /* url tab */
+    const urlPrev = document.getElementById('av-url-prev');
+    if (urlPrev && !urlPrev.dataset.bound) {
+      urlPrev.dataset.bound = '1';
+      const show = () => {
+        const v = document.getElementById('av-url').value.trim();
+        const pv = document.getElementById('av-url-preview');
+        pv.innerHTML = '';
+        if (!v.startsWith('http')) return;
+        const im = document.createElement('img');
+        im.src = v;
+        im.onerror = () => { pv.textContent = '⚠️'; };
+        pv.appendChild(im);
+      };
+      urlPrev.onclick = show;
+      document.getElementById('av-url-save').onclick = () => {
+        const v = document.getElementById('av-url').value.trim();
+        if (v.startsWith('http')) this.pickAvatar(v);
+      };
+      document.getElementById('av-url').onkeydown = (e) => { if (e.key === 'Enter') show(); };
+    }
   },
   async pickAvatar(val) {
     try {
@@ -318,7 +443,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.0.0 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.3 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 

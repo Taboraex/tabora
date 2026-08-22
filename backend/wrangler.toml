@@ -5,7 +5,7 @@ compatibility_date = "2024-09-23"
 [[d1_databases]]
 binding = "DB"
 database_name = "tabora"
-database_id = "e378141b-805c-490a-952a-25d622bb2104"
+database_id = "95b27545-ccfe-43b8-aa81-7bdd859313ac"
 
 [vars]
 OWNER_EMAIL = ""

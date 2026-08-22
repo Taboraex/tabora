@@ -130,6 +130,62 @@ async function handle(req, env) {
     /* ---------- ping ---------- */
     if (p === '/api/ping') return json({ ok: true, service: 'tabora-api', time: Date.now() });
 
+    /* ---------- download latest build ---------- */
+    if (p === '/download') {
+      /* primary: redirect to the newest public GitHub release asset (stable URL, always latest) */
+      const ghUrl = 'https://github.com/Taboraex/tabora/releases/latest/download/tabora-protected.zip';
+      if (url.searchParams.get('info') === '1') return json({ source: 'github-latest', url: ghUrl });
+      if (url.searchParams.get('direct') !== '1') return Response.redirect(ghUrl, 302);
+      /* fallback: copy stored in D1 */
+      if (url.searchParams.get('info') === '1') {
+        const meta = await db.prepare("SELECT name, COUNT(*) AS chunks FROM files WHERE key='latest' GROUP BY name").first();
+        return json(meta ? { source: 'd1', file: meta.name, chunks: meta.chunks } : { file: null });
+      }
+      const rows = await db.prepare("SELECT name, data FROM files WHERE key='latest' ORDER BY ord ASC").all();
+      if (!rows.results || !rows.results.length) return err('no_file_uploaded_yet', 404);
+      let bin = '';
+      for (const r2 of rows.results) bin += r2.data;
+      const bytes = Uint8Array.from(atob(bin), c => c.charCodeAt(0));
+      return new Response(bytes, {
+        headers: {
+          ...CORS,
+          'Content-Type': 'application/zip',
+          'Content-Disposition': 'attachment; filename="' + rows.results[0].name + '"',
+          'Cache-Control': 'public, max-age=3600'
+        }
+      });
+    }
+
+    /* ---------- internal admin (key-gated) ---------- */
+    const adminKey = env.ADMIN_KEY || '';
+    const hasKey = adminKey && req.headers.get('x-admin-key') === adminKey;
+
+    if (p === '/admin/migrate' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      await db.prepare('CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, name TEXT, ord INTEGER, data TEXT)').run();
+      await db.prepare('CREATE INDEX IF NOT EXISTS idx_files ON files(key, ord)').run();
+      return json({ ok: true });
+    }
+    if (p === '/admin/file' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      if (b.reset) await db.prepare("DELETE FROM files WHERE key='latest'").run();
+      if (Array.isArray(b.chunks)) {
+        for (let i = 0; i < b.chunks.length; i++) {
+          await db.prepare("INSERT INTO files(key,name,ord,data) VALUES('latest',?,?,?)").bind(String(b.name || 'tabora.zip'), (b.startOrd || 0) + i, b.chunks[i]).run();
+        }
+      }
+      return json({ ok: true });
+    }
+    if (p === '/admin/reset-users' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      await db.prepare('DELETE FROM messages').run();
+      await db.prepare('DELETE FROM friends').run();
+      await db.prepare('DELETE FROM sessions').run();
+      await db.prepare('DELETE FROM users').run();
+      return json({ ok: true });
+    }
+
     /* ---------- prices ---------- */
     if (p === '/api/prices') return json(await getPrices());
 

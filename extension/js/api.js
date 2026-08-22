@@ -1,5 +1,5 @@
 /* Tabora API client — talks to the Cloudflare Worker */
-const API_BASE = 'https://tabora-api.nexaextensionsir.workers.dev';
+const API_BASE = 'https://tabora-api.nexaextensionsir-8af.workers.dev';
 
 const Api = {
   _pushTimer: null,
