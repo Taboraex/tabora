@@ -62,6 +62,13 @@ async function kvSet(db, key, value) {
   await db.prepare('CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)').run();
   await db.prepare('INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value').bind(key, String(value)).run();
 }
+async function kvDel(db, key) {
+  await db.prepare('DELETE FROM kv WHERE key=?').bind(key).run();
+}
+function genResetToken() {
+  const a = rid().replace(/-/g, '').slice(0, 8).toUpperCase();
+  return 'RST-' + a.slice(0, 4) + '-' + a.slice(4, 8);
+}
 function publicUser(u) {
   if (!u) return null;
   const { pass, ...rest } = u;
@@ -530,7 +537,7 @@ async function handle(req, env) {
       return json({ token, user: publicUser(u) });
     }
 
-    /* ---------- password recovery via recovery code ---------- */
+    /* ---------- password recovery via recovery code OR one-time bot token ---------- */
     if (p === '/api/recover' && req.method === 'POST') {
       if (!rateLimit(ip, 'recover', 10, 3600000)) return err('rate_limited', 429);
       const b = await body(req);
@@ -541,12 +548,37 @@ async function handle(req, env) {
       if (!code) return err('bad_code', 401);
       await ensureRecoveryCol(db);
       const u = await db.prepare('SELECT * FROM users WHERE email=? OR username=?').bind(idf, idf).first();
-      if (!u || !u.recovery) return err('no_recovery', 401);
-      if (u.recovery !== await sha256('rc::' + code)) return err('bad_code', 401);
+      if (!u) return err('bad_code', 401);
+      let ok = false, usedTokenKey = null;
+      if (u.recovery && u.recovery === await sha256('rc::' + code)) ok = true;
+      if (!ok) {
+        const tk = await db.prepare("SELECT value FROM kv WHERE key=?").bind('rst:' + await sha256('rc::' + code)).first();
+        if (tk) {
+          let meta = {};
+          try { meta = JSON.parse(tk.value); } catch (e) { }
+          if (meta.uid === u.id && meta.exp > Date.now()) { ok = true; usedTokenKey = 'rst:' + await sha256('rc::' + code); }
+        }
+      }
+      if (!ok) return err(u.recovery ? 'bad_code' : 'no_recovery', 401);
+      if (usedTokenKey) await kvDel(db, usedTokenKey); /* one-time */
       const salt = rid();
       await db.prepare('UPDATE users SET pass=? WHERE id=?').bind(salt + ':' + await sha256(salt + '::' + password), u.id).run();
       await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id).run();
       return json({ ok: true });
+    }
+
+    /* ---------- telegram bot: issue one-time password-reset token ---------- */
+    if (p === '/api/bot/reset-token' && req.method === 'POST') {
+      const sec = env.BOT_SECRET || '';
+      if (!sec || req.headers.get('x-bot-secret') !== sec) return err('forbidden', 403);
+      if (!rateLimit(ip, 'botrt', 60, 3600000)) return err('rate_limited', 429);
+      const b = await body(req);
+      const idf = String(b.identifier || '').toLowerCase().trim();
+      const u = await db.prepare('SELECT id, username FROM users WHERE email=? OR username=?').bind(idf, idf).first();
+      if (!u) return err('user_not_found', 404);
+      const token = genResetToken();
+      await kvSet(db, 'rst:' + await sha256('rc::' + normCode(token)), JSON.stringify({ uid: u.id, exp: Date.now() + 10 * 60000 }));
+      return json({ token, expires_in: 600, username: u.username });
     }
 
     /* ---------- everything below needs auth ---------- */
