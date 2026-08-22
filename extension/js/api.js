@@ -21,12 +21,18 @@ const Api = {
   async register(email, username, password, name) {
     const d = await this.req('/api/register', { body: { email, username, password, name } });
     await Store.setAuth(d.token, d.user);
-    return d.user;
+    return d;
   },
   async login(identifier, password) {
     const d = await this.req('/api/login', { body: { identifier, password } });
     await Store.setAuth(d.token, d.user);
     return d.user;
+  },
+  async recover(identifier, code, password) {
+    return await this.req('/api/recover', { body: { identifier, code, password } });
+  },
+  async regenRecovery() {
+    return await this.req('/api/recovery', { body: {} });
   },
   async logout() {
     try { await this.req('/api/logout', { body: {} }); } catch { }

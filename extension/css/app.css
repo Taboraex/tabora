@@ -550,3 +550,11 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 .announce.gold { background: linear-gradient(135deg, rgba(250,204,21,.25), rgba(244,114,182,.2)); border-color: rgba(250,204,21,.5); }
 .ann-x { background: none; border: none; color: inherit; cursor: pointer; opacity: .7; }
 .ann-x:hover { opacity: 1; }
+
+/* ===== recovery code modal ===== */
+.code-modal { position: fixed; inset: 0; z-index: 120; display: grid; place-items: center; background: rgba(4,6,18,.66); backdrop-filter: blur(6px); }
+.code-box { width: min(400px, 92vw); background: linear-gradient(150deg, rgba(34,211,238,.12), rgba(139,92,246,.12)), var(--glass, rgba(20,24,48,.9)); border: 1px solid rgba(34,211,238,.35); border-radius: 20px; padding: 22px; text-align: center; box-shadow: 0 20px 70px rgba(0,0,0,.5); }
+.code-box h3 { margin-bottom: 8px; }
+.code-box .muted { font-size: .75rem; opacity: .7; line-height: 1.8; }
+.code-val { margin: 14px 0; font-size: 1.3rem; letter-spacing: 2px; font-weight: 800; padding: 12px; border-radius: 14px; background: rgba(0,0,0,.4); border: 1px dashed rgba(34,211,238,.5); color: #7dd3fc; }
+.code-box .row-btns { display: flex; gap: 8px; justify-content: center; }

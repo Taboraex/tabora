@@ -32,6 +32,8 @@ const Panels = {
   authMode(mode) {
     document.getElementById('auth-login').style.display = mode === 'login' ? 'block' : 'none';
     document.getElementById('auth-register').style.display = mode === 'register' ? 'block' : 'none';
+    const rec = document.getElementById('auth-recover');
+    if (rec) rec.style.display = mode === 'recover' ? 'block' : 'none';
   },
   async doLogin() {
     const idf = document.getElementById('login-id').value.trim();
@@ -50,12 +52,42 @@ const Panels = {
     const pw = document.getElementById('reg-pw').value;
     const name = document.getElementById('reg-name').value.trim();
     try {
-      await Api.register(email, uname, pw, name);
+      const d = await Api.register(email, uname, pw, name);
+      if (d && d.recovery) this.showCodeModal(d.recovery);
       await Api.pullCloud();
       showToast('🎉 ' + I18n.t('register_title'));
       this.closeAll();
       App.refreshIdentity();
     } catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
+  },
+  async doRecover() {
+    const idf = document.getElementById('rec-id').value.trim();
+    const code = document.getElementById('rec-code').value.trim();
+    const pw = document.getElementById('rec-pw').value;
+    try {
+      await Api.recover(idf, code, pw);
+      showToast(I18n.t('recovered_ok'), 4200);
+      this.authMode('login');
+      document.getElementById('login-id').value = idf;
+    } catch (e) { showToast(I18n.t('err_' + (e.code || 'generic')), 3200); }
+  },
+  showCodeModal(code) {
+    const ov = document.createElement('div');
+    ov.className = 'code-modal';
+    ov.innerHTML = `<div class="code-box">
+      <h3>${I18n.t('reg_code_title')}</h3>
+      <p class="muted">${I18n.t('reg_code_hint')}</p>
+      <div class="code-val" dir="ltr">${code}</div>
+      <div class="row-btns"><button class="btn primary" id="copy-code">${I18n.t('copy_code')}</button><button class="btn" id="close-code">✕</button></div>
+    </div>`;
+    document.body.appendChild(ov);
+    const copyTxt = () => {
+      const done = () => showToast(I18n.t('copied_code'), 2000);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(done);
+      else done();
+    };
+    ov.querySelector('#copy-code').onclick = copyTxt;
+    ov.querySelector('#close-code').onclick = () => ov.remove();
   },
   async doLogout() {
     await Api.logout();
@@ -484,6 +516,10 @@ const Panels = {
     const s = Store.state.settings;
     const box = document.getElementById('settings-body');
     box.innerHTML = `
+    ${Store.state.token ? `<div class="set-sec glass">
+      <div class="sec-label">🛡️ ${I18n.t('account_sec')}</div>
+      <button class="btn" id="gen-recovery">🔐 ${I18n.t('gen_recovery')}</button>
+    </div>` : ''}
     <div class="set-sec glass">
       <div class="sec-label">🌐 ${I18n.t('set_language')}</div>
       <div class="seg">
@@ -522,7 +558,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.0.8 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.9 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
@@ -537,6 +573,11 @@ const Panels = {
     box.querySelector('#set-clock24').onchange = (e) => { Store.setSettings({ clock24: e.target.checked }); Widgets.renderClock(); };
     box.querySelector('#set-temp').onchange = (e) => { Store.setSettings({ tempUnit: e.target.value }); Widgets.renderWeather(); };
     box.querySelector('#set-engine').onchange = (e) => Store.setSettings({ engine: e.target.value });
+    const gr = box.querySelector('#gen-recovery');
+    if (gr) gr.onclick = async () => {
+      try { const d = await Api.regenRecovery(); if (d && d.code) this.showCodeModal(d.code); }
+      catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
+    };
     box.querySelector('#set-wp').onclick = () => this.open('panel-wallpapers');
     const sy = box.querySelector('#set-sync');
     if (sy) sy.onclick = async () => { await Api.pullCloud(); Widgets.renderAll(); showToast(I18n.t('cloud_synced')); };

@@ -79,6 +79,16 @@
       <label class="fld"><span data-i18n="password"></span><span class="pw-wrap"><input id="login-pw" type="password" autocomplete="current-password"><button type="button" class="eye" data-for="login-pw" title="👁">👁</button></span></label>
       <button class="btn primary wide" id="login-btn" data-i18n="login"></button>
       <div class="switch-auth"><button class="link" id="auth-to-register" data-i18n="no_account"></button></div>
+      <div class="switch-auth"><button class="link" id="auth-to-recover" data-i18n="forgot"></button></div>
+    </div>
+    <div id="auth-recover" style="display:none">
+      <h3 data-i18n="recover_title"></h3>
+      <p class="muted" data-i18n="recover_hint"></p>
+      <label class="fld"><span data-i18n="email"></span><input id="rec-id" autocomplete="username"></label>
+      <label class="fld"><span data-i18n="recovery_code"></span><input id="rec-code" dir="ltr" placeholder="TBRA-XXXX-XXXX"></label>
+      <label class="fld"><span data-i18n="new_pass"></span><span class="pw-wrap"><input id="rec-pw" type="password"><button type="button" class="eye" data-for="rec-pw" title="👁">👁</button></span></label>
+      <button class="btn primary wide" id="recover-btn" data-i18n="recover_btn"></button>
+      <div class="switch-auth"><button class="link" id="recover-to-login" data-i18n="have_account"></button></div>
     </div>
     <div id="auth-register" style="display:none">
       <h3 data-i18n="register_title"></h3>

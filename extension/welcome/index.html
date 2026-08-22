@@ -155,6 +155,7 @@
       <div class="err" id="l-err"></div>
       <button class="cta" id="btn-login">ورود به تبورا</button>
       <div class="swap"><span id="sw1">حساب نداری؟</span> <button id="to-reg">ثبت‌نام کن</button></div>
+      <div class="swap"><button id="to-recover">رمزم رو فراموش کردم</button></div>
     </div>
     <div id="form-register" style="display:none">
       <h3 id="t-reg">به تبورا بپیوند 🚀</h3>
@@ -166,6 +167,16 @@
       <div class="err" id="r-err"></div>
       <button class="cta" id="btn-register">ساخت حساب و ورود</button>
       <div class="swap"><span id="sw2">حساب داری؟</span> <button id="to-login">وارد شو</button></div>
+    </div>
+    <div id="form-recover" style="display:none">
+      <h3 id="t-rec">بازیابی رمز عبور 🔑</h3>
+      <p id="hint3">کد بازیابی‌ات رو وارد کن.</p>
+      <input id="rc-id" placeholder="ایمیل یا نام کاربری">
+      <input id="rc-code" dir="ltr" placeholder="TBRA-XXXX-XXXX">
+      <div class="pw-wrap"><input id="rc-pw" type="password" placeholder="رمز جدید"><button type="button" class="eye" data-for="rc-pw" title="👁">👁</button></div>
+      <div class="err" id="rc-err"></div>
+      <button class="cta" id="btn-recover">تغییر رمز عبور</button>
+      <div class="swap"><span id="sw3">حساب داری؟</span> <button id="rec-to-login">وارد شو</button></div>
     </div>
     <button class="ghost-btn" id="btn-guest">ادامه به عنوان مهمان</button>
   </div>
@@ -184,8 +195,12 @@ const TXT = {
     hint2: 'یه حساب بساز تا پروفایل، آواتار متحرک و تنظیماتت همیشه همراهت باشه.',
     btnLogin: 'ورود به تبورا', btnReg: 'ساخت حساب و ورود', guest: 'ادامه به عنوان مهمان',
     sw1: 'حساب نداری؟', reg: 'ثبت‌نام کن', sw2: 'حساب داری؟', login: 'وارد شو',
-    ph: { lid: 'ایمیل یا نام کاربری', lpw: 'رمز عبور', re: 'ایمیل', ru: 'نام کاربری (انگلیسی)', rn: 'نام نمایشی', rp: 'رمز عبور (حداقل ۶ کاراکتر)' },
-    err: { bad_email: 'ایمیل معتبر نیست', bad_username: 'نام کاربری: ۳ تا ۲۰ حرف انگلیسی/عدد', bad_password: 'رمز حداقل ۶ کاراکتر', email_taken: 'این ایمیل قبلاً ثبت شده', username_taken: 'این نام کاربری گرفته شده', invalid_credentials: 'رمز اشتباهه — با دکمهٔ 👁 بررسی کن', user_not_found: 'حسابی پیدا نشد — اول ثبت‌نام کن', rate_limited: 'خیلی سریع! کمی صبر کن' },
+    forgot: 'رمزم رو فراموش کردم', tRec: 'بازیابی رمز عبور 🔑',
+    hintRec: 'کد بازیابی‌ات رو وارد کن — همونی که موقع ثبت‌نام گرفتی یا از تنظیمات ساختی.',
+    btnRec: 'تغییر رمز عبور', recOk: '✅ رمزت عوض شد — حالا با رمز جدید وارد شو',
+    ph: { lid: 'ایمیل یا نام کاربری', lpw: 'رمز عبور', re: 'ایمیل', ru: 'نام کاربری (انگلیسی)', rn: 'نام نمایشی', rp: 'رمز عبور (حداقل ۶ کاراکتر)', rc: 'کد بازیابی (TBRA-…)', rnp: 'رمز جدید' },
+    err: { bad_email: 'ایمیل معتبر نیست', bad_username: 'نام کاربری: ۳ تا ۲۰ حرف انگلیسی/عدد', bad_password: 'رمز حداقل ۶ کاراکتر', email_taken: 'این ایمیل قبلاً ثبت شده', username_taken: 'این نام کاربری گرفته شده', invalid_credentials: 'رمز اشتباهه — با دکمهٔ 👁 بررسی کن', user_not_found: 'حسابی پیدا نشد — اول ثبت‌نام کن', bad_code: 'کد بازیابی درست نیست', no_recovery: 'برای این حساب کد بازیابی ثبت نشده — از پشتیبانی کمک بگیر', rate_limited: 'خیلی سریع! کمی صبر کن' },
+    codeTitle: '🔐 کد بازیابی تو', codeHint: 'این کد رو جای امن نگه دار؛ اگه روزی رمزت یادت رفت، فقط با همین کد عوضش می‌کنی.', copy: 'کپی کد ⧉', copied: 'کد کپی شد',
     success: '🎉 خوش اومدی!'
   },
   en: {
@@ -196,8 +211,12 @@ const TXT = {
     hint2: 'Create an account so your profile, animated avatar and settings follow you everywhere.',
     btnLogin: 'Enter Tabora', btnReg: 'Create account & enter', guest: 'Continue as guest',
     sw1: 'No account?', reg: 'Sign up', sw2: 'Have an account?', login: 'Log in',
-    ph: { lid: 'Email or username', lpw: 'Password', re: 'Email', ru: 'Username', rn: 'Display name', rp: 'Password (min 6 chars)' },
-    err: { bad_email: 'Invalid email', bad_username: 'Username: 3–20 letters/numbers', bad_password: 'Password min 6 characters', email_taken: 'Email already registered', username_taken: 'Username is taken', invalid_credentials: 'Wrong password — use the 👁 button to check', user_not_found: 'No account found — register first', rate_limited: 'Too fast! Wait a moment' },
+    forgot: 'I forgot my password', tRec: 'Password recovery 🔑',
+    hintRec: 'Enter your recovery code — the one you got at sign-up or generated in settings.',
+    btnRec: 'Change password', recOk: '✅ Password changed — now log in with the new one',
+    ph: { lid: 'Email or username', lpw: 'Password', re: 'Email', ru: 'Username', rn: 'Display name', rp: 'Password (min 6 chars)', rc: 'Recovery code (TBRA-…)', rnp: 'New password' },
+    err: { bad_email: 'Invalid email', bad_username: 'Username: 3–20 letters/numbers', bad_password: 'Password min 6 characters', email_taken: 'Email already registered', username_taken: 'Username is taken', invalid_credentials: 'Wrong password — use the 👁 button to check', user_not_found: 'No account found — register first', bad_code: 'Recovery code is incorrect', no_recovery: 'No recovery code on this account — contact support', rate_limited: 'Too fast! Wait a moment' },
+    codeTitle: '🔐 Your recovery code', codeHint: 'Keep this code safe; it is the only way to reset a forgotten password.', copy: 'Copy code ⧉', copied: 'Code copied',
     success: '🎉 Welcome!'
   }
 };
@@ -217,6 +236,15 @@ function applyLang() {
   document.getElementById('btn-login').textContent = t.btnLogin;
   document.getElementById('btn-register').textContent = t.btnReg;
   document.getElementById('btn-guest').textContent = t.guest;
+  document.getElementById('to-recover').textContent = t.forgot;
+  document.getElementById('t-rec').textContent = t.tRec;
+  document.getElementById('hint3').textContent = t.hintRec;
+  document.getElementById('btn-recover').textContent = t.btnRec;
+  document.getElementById('sw3').textContent = t.sw2;
+  document.getElementById('rec-to-login').textContent = t.login;
+  document.getElementById('rc-id').placeholder = t.ph.lid;
+  document.getElementById('rc-code').placeholder = t.ph.rc;
+  document.getElementById('rc-pw').placeholder = t.ph.rnp;
   document.getElementById('sw1').textContent = t.sw1;
   document.getElementById('to-reg').textContent = t.reg;
   document.getElementById('sw2').textContent = t.sw2;
@@ -248,17 +276,39 @@ for (let i = 0; i < 70; i++) {
 /* forms */
 document.getElementById('to-reg').onclick = () => { form('register'); };
 document.getElementById('to-login').onclick = () => { form('login'); };
+document.getElementById('to-recover').onclick = () => { form('recover'); };
+document.getElementById('rec-to-login').onclick = () => { form('login'); };
+document.getElementById('btn-recover').onclick = async () => {
+  const errEl = document.getElementById('rc-err'); errEl.textContent = '';
+  try {
+    await api('/api/recover', {
+      identifier: document.getElementById('rc-id').value.trim(),
+      code: document.getElementById('rc-code').value.trim(),
+      password: document.getElementById('rc-pw').value
+    });
+    errEl.style.color = '#86efac';
+    errEl.textContent = TXT[lang].recOk;
+    setTimeout(() => { errEl.style.color = ''; form('login'); document.getElementById('l-id').value = document.getElementById('rc-id').value; }, 1600);
+  } catch (e) { errEl.textContent = TXT[lang].err[e.message] || e.message; }
+};
 function form(m) {
   document.getElementById('form-login').style.display = m === 'login' ? 'block' : 'none';
   document.getElementById('form-register').style.display = m === 'register' ? 'block' : 'none';
+  document.getElementById('form-recover').style.display = m === 'recover' ? 'block' : 'none';
 }
 
-async function saveAndGo(token, user) {
+async function saveAndGo(token, user, code) {
   const store = { token, user, settings: { lang } };
   await chrome.storage.local.set({ token, user, settings: store.settings });
   celebrate();
   const t = TXT[lang];
-  document.querySelector('.auth-card').innerHTML = `<h3 style="text-align:center;font-size:1.5rem">${t.success}</h3><br><button class="cta" id="btn-enter">${t.btnLogin} →</button>`;
+  const codeBox = code ? `<div style="margin:14px 0;padding:16px;border-radius:16px;border:1px dashed rgba(34,211,238,.5);background:rgba(0,0,0,.35)">
+    <b>${t.codeTitle}</b><p style="font-size:.72rem;opacity:.7;margin:6px 0 10px">${t.codeHint}</p>
+    <div dir="ltr" style="font-size:1.25rem;letter-spacing:2px;font-weight:800;color:#7dd3fc">${code}</div>
+    <button class="cta" id="btn-copy-code" style="margin-top:10px;padding:8px 14px;font-size:.75rem">${t.copy}</button></div>` : '';
+  document.querySelector('.auth-card').innerHTML = `<h3 style="text-align:center;font-size:1.5rem">${t.success}</h3>` + codeBox + `<br><button class="cta" id="btn-enter">${t.btnLogin} →</button>`;
+  const bc = document.getElementById('btn-copy-code');
+  if (bc) bc.onclick = () => { navigator.clipboard && navigator.clipboard.writeText(code); bc.textContent = t.copied; };
   document.getElementById('btn-enter').onclick = enter;
 }
 function enter() {
@@ -293,7 +343,7 @@ document.getElementById('btn-register').onclick = async () => {
       name: document.getElementById('r-name').value.trim(),
       password: document.getElementById('r-pw').value
     });
-    await saveAndGo(d.token, d.user);
+    await saveAndGo(d.token, d.user, d.recovery);
   } catch (e) { errEl.textContent = TXT[lang].err[e.message] || e.message; }
 };
 

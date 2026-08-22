@@ -75,6 +75,9 @@ const App = {
     /* auth forms */
     document.getElementById('auth-to-register').onclick = () => Panels.authMode('register');
     document.getElementById('auth-to-login').onclick = () => Panels.authMode('login');
+    document.getElementById('auth-to-recover').onclick = () => Panels.authMode('recover');
+    document.getElementById('recover-to-login').onclick = () => Panels.authMode('login');
+    document.getElementById('recover-btn').onclick = () => Panels.doRecover();
     document.getElementById('login-btn').onclick = () => Panels.doLogin();
     document.getElementById('register-btn').onclick = () => Panels.doRegister();
     document.querySelectorAll('.eye').forEach(b => {

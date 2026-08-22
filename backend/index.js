@@ -23,6 +23,14 @@ async function sha256(text) {
   return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
 }
 function rid() { return crypto.randomUUID(); }
+function genCode() {
+  const a = rid().replace(/-/g, '').slice(0, 8).toUpperCase();
+  return 'TBRA-' + a.slice(0, 4) + '-' + a.slice(4, 8);
+}
+function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+async function ensureRecoveryCol(db) {
+  try { await db.prepare('ALTER TABLE users ADD COLUMN recovery TEXT').run(); } catch (e) { /* exists */ }
+}
 function newToken() {
   return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 }
@@ -482,14 +490,16 @@ async function handle(req, env) {
       const id = rid();
       const salt = rid();
       const hash = salt + ':' + await sha256(salt + '::' + password);
+      const rcode = genCode();
+      await ensureRecoveryCol(db);
       await db.prepare(
-        'INSERT INTO users(id,email,username,pass,name,bio,avatar,avatar_kind,role,settings,bookmarks,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)'
-      ).bind(id, email, username, hash, name || username, '', '', 'none', role, '{}', '[]', Date.now()).run();
+        'INSERT INTO users(id,email,username,pass,name,bio,avatar,avatar_kind,role,settings,bookmarks,created_at,recovery) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)'
+      ).bind(id, email, username, hash, name || username, '', '', 'none', role, '{}', '[]', Date.now(), await sha256('rc::' + normCode(rcode))).run();
       const token = newToken();
       await db.prepare('INSERT INTO sessions(token,user_id,expires) VALUES(?,?,?)')
         .bind(token, id, Date.now() + 90 * 86400000).run();
       const u = await db.prepare('SELECT * FROM users WHERE id=?').bind(id).first();
-      return json({ token, user: publicUser(u) });
+      return json({ token, user: publicUser(u), recovery: rcode });
     }
 
     /* ---------- login ---------- */
@@ -520,6 +530,25 @@ async function handle(req, env) {
       return json({ token, user: publicUser(u) });
     }
 
+    /* ---------- password recovery via recovery code ---------- */
+    if (p === '/api/recover' && req.method === 'POST') {
+      if (!rateLimit(ip, 'recover', 10, 3600000)) return err('rate_limited', 429);
+      const b = await body(req);
+      const idf = String(b.identifier || b.email || '').toLowerCase().trim();
+      const code = normCode(b.code);
+      const password = String(b.password || '');
+      if (password.length < 6) return err('bad_password');
+      if (!code) return err('bad_code', 401);
+      await ensureRecoveryCol(db);
+      const u = await db.prepare('SELECT * FROM users WHERE email=? OR username=?').bind(idf, idf).first();
+      if (!u || !u.recovery) return err('no_recovery', 401);
+      if (u.recovery !== await sha256('rc::' + code)) return err('bad_code', 401);
+      const salt = rid();
+      await db.prepare('UPDATE users SET pass=? WHERE id=?').bind(salt + ':' + await sha256(salt + '::' + password), u.id).run();
+      await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id).run();
+      return json({ ok: true });
+    }
+
     /* ---------- everything below needs auth ---------- */
     const me = await sessionUser(db, req);
 
@@ -529,6 +558,13 @@ async function handle(req, env) {
     }
 
     if (!me) return err('unauthorized', 401);
+
+    if (p === '/api/recovery' && req.method === 'POST') {
+      const code = genCode();
+      await ensureRecoveryCol(db);
+      await db.prepare('UPDATE users SET recovery=? WHERE id=?').bind(await sha256('rc::' + normCode(code)), me.id).run();
+      return json({ code });
+    }
 
     if (p === '/api/me' && req.method === 'GET') return json({ user: publicUser(me) });
 
