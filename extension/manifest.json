@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tabora — Smart New Tab",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Tabora: a beautiful smart new tab — live wallpapers, widgets, smart bookmarks, friends & chat | تبورا: نیوتب هوشمند با والپیپر متحرک، ویجت‌ها و چت",
   "icons": {
     "16": "assets/icons/icon16.png",
@@ -14,6 +14,15 @@
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
-  "permissions": ["storage"],
-  "host_permissions": ["<all_urls>"]
+  "permissions": ["storage", "declarativeNetRequest"],
+  "host_permissions": ["<all_urls>"],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "wallsflow_referer",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  }
 }

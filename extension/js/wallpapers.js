@@ -48,8 +48,12 @@ const Wallpapers = {
       layerVideo.src = wp.url;
       layerVideo.style.display = 'block';
       layerVideo.play().catch(() => { });
-      layerVideo.onloadeddata = () => { if (!silent) Theme.extractFromVideo(layerVideo); else Theme.set(Store.state.settings.accent || '#8b5cf6', true); };
-      Theme.set(Store.state.settings.accent || '#8b5cf6', true);
+      if (wp.accent) {
+        Theme.set(wp.accent, true);
+      } else {
+        layerVideo.onloadeddata = () => { if (!silent) Theme.extractFromVideo(layerVideo); else Theme.set(Store.state.settings.accent || '#8b5cf6', true); };
+        Theme.set(Store.state.settings.accent || '#8b5cf6', true);
+      }
     } else if ((wp.type === 'image' || wp.type === 'custom') && wp.url) {
       layerImg.src = wp.url;
       layerImg.style.display = 'block';

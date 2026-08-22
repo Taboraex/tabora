@@ -293,6 +293,18 @@ const Panels = {
       </button>`;
     });
     html += `</div>
+    <div class="sec-label">🌐 ${I18n.t('wp_web')}</div>
+    <div class="wp-grid">`;
+    (typeof EXT_WALLPAPERS !== 'undefined' ? EXT_WALLPAPERS : []).forEach(w => {
+      const active = (cur.type === 'video' && cur.id === w.id) ? 'active' : '';
+      html += `<button class="wp-card ${active}" data-ext="${w.id}" title="${w.name}">
+        <img class="wp-thumb" loading="lazy" src="${w.thumb}" alt="${w.name}">
+        <span class="wp-src">${w.src}</span>
+        <span class="wp-name">${w.name}</span>
+      </button>`;
+    });
+    html += `</div>
+    <div class="tip">💡 ${I18n.t('wp_web_credit')}</div>
     <div class="sec-label">${I18n.t('wp_custom_url')}</div>
     <div class="wp-custom glass">
       <input id="wp-url" placeholder="https://… .mp4 / .webm / .jpg / .png">
@@ -302,11 +314,21 @@ const Panels = {
     <div class="wp-custom glass"><button class="btn" id="wp-file-btn">📁 ${I18n.t('wp_upload')}</button></div>
     <div class="tip">💡 ${I18n.t('smart_theme_applied')}</div>`;
     box.innerHTML = html;
-    box.querySelectorAll('.wp-card').forEach(c => {
+    box.querySelectorAll('.wp-card[data-wp]').forEach(c => {
       c.onclick = () => {
         Store.setSettings({ wallpaper: { type: 'builtin', id: c.dataset.wp, url: '' } });
         Wallpapers.apply();
         showToast(I18n.t('smart_theme_applied'), 2200);
+        this.renderWallpapers();
+      };
+    });
+    box.querySelectorAll('.wp-card[data-ext]').forEach(c => {
+      c.onclick = () => {
+        const w = (typeof EXT_WALLPAPERS !== 'undefined' ? EXT_WALLPAPERS : []).find(x => x.id === c.dataset.ext);
+        if (!w) return;
+        Store.setSettings({ wallpaper: { type: 'video', id: w.id, url: w.video, accent: w.accent } });
+        Wallpapers.apply();
+        showToast('🌐 ' + w.name + ' — ' + I18n.t('smart_theme_applied'), 2600);
         this.renderWallpapers();
       };
     });
@@ -443,7 +465,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.0.3 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.4 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
