@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabora — New Tab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&family=Lalezar&family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;600;700&family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- wallpaper layers -->
+<canvas id="wp-canvas"></canvas>
+<video id="wp-video" autoplay muted loop playsinline></video>
+<img id="wp-img" alt="">
+<div id="wp-vignette"></div>
+
+<!-- top bar -->
+<header id="topbar">
+  <div class="brand glass">
+    <img src="assets/icons/icon48.png" alt="Tabora" class="brand-logo">
+    <span class="brand-name">Tabora</span>
+  </div>
+  <div class="top-actions">
+    <button id="lang-toggle" class="glass icon-btn" title="FA / EN">🌐</button>
+    <div id="identity" class="glass chip"></div>
+  </div>
+</header>
+
+<!-- center: clock + search -->
+<main id="center">
+  <div id="greeting" class="greeting"></div>
+  <div id="clock-time" class="clock">--:--</div>
+  <div id="clock-date" class="clock-date"></div>
+  <div id="searchbar" class="glass searchbar">
+    <span class="sb-ico">🔍</span>
+    <span class="sb-text" data-i18n="search_placeholder"></span>
+    <kbd class="sb-kbd">↵</kbd>
+  </div>
+</main>
+
+<!-- widgets row -->
+<section id="widgets-wrap"><div id="widgets-row"></div></section>
+
+<!-- dock -->
+<nav id="dock" class="glass">
+  <button id="dock-search" class="dock-btn" title=""><span>🔍</span><i data-i18n="engines"></i></button>
+  <button id="dock-wallpapers" class="dock-btn" title=""><span>🖼️</span><i data-i18n="wallpapers"></i></button>
+  <button id="dock-bookmarks" class="dock-btn" title=""><span>🔖</span><i data-i18n="widget_bookmarks"></i></button>
+  <button id="dock-friends" class="dock-btn" title=""><span>💬</span><i data-i18n="friends"></i></button>
+  <button id="dock-settings" class="dock-btn" title=""><span>⚙️</span><i data-i18n="settings"></i></button>
+</nav>
+
+<div id="backdrop"></div>
+
+<!-- ============ SEARCH OVERLAY ============ -->
+<div id="search-overlay">
+  <div class="so-box glass">
+    <div class="so-input-row">
+      <span class="sb-ico">🔍</span>
+      <input id="search-input" autocomplete="off" data-i18n-ph="search_placeholder">
+      <button id="search-close" class="icon-btn">✕</button>
+    </div>
+    <div id="search-engines"></div>
+    <div id="search-sugg"></div>
+  </div>
+</div>
+
+<!-- ============ PANEL: AUTH ============ -->
+<aside class="panel" id="panel-auth">
+  <div class="panel-head"><h2>💜 Tabora</h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body">
+    <div id="auth-login">
+      <h3 data-i18n="login_title"></h3>
+      <p class="muted" data-i18n="auth_hint"></p>
+      <label class="fld"><span data-i18n="email"></span><input id="login-id" autocomplete="username"></label>
+      <label class="fld"><span data-i18n="password"></span><input id="login-pw" type="password" autocomplete="current-password"></label>
+      <button class="btn primary wide" id="login-btn" data-i18n="login"></button>
+      <div class="switch-auth"><button class="link" id="auth-to-register" data-i18n="no_account"></button></div>
+    </div>
+    <div id="auth-register" style="display:none">
+      <h3 data-i18n="register_title"></h3>
+      <p class="muted" data-i18n="auth_hint"></p>
+      <label class="fld"><span data-i18n="email"></span><input id="reg-email" type="email"></label>
+      <label class="fld"><span data-i18n="username"></span><input id="reg-uname" placeholder="your_id"></label>
+      <label class="fld"><span data-i18n="display_name"></span><input id="reg-name"></label>
+      <label class="fld"><span data-i18n="password"></span><input id="reg-pw" type="password"></label>
+      <button class="btn primary wide" id="register-btn" data-i18n="create_account"></button>
+      <div class="switch-auth"><button class="link" id="auth-to-login" data-i18n="have_account"></button></div>
+    </div>
+    <div class="switch-auth"><button class="link muted" id="auth-guest" data-i18n="guest_mode"></button></div>
+  </div>
+</aside>
+
+<!-- ============ PANEL: PROFILE ============ -->
+<aside class="panel" id="panel-profile">
+  <div class="panel-head"><h2 data-i18n="profile_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="profile-body"></div>
+</aside>
+
+<!-- ============ PANEL: WALLPAPERS ============ -->
+<aside class="panel" id="panel-wallpapers">
+  <div class="panel-head"><h2 data-i18n="wallpapers_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="wallpapers-body"></div>
+</aside>
+
+<!-- ============ PANEL: FRIENDS & CHAT ============ -->
+<aside class="panel wide" id="panel-friends">
+  <div class="panel-head"><h2 data-i18n="friends_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body">
+    <div id="friends-view">
+      <div class="user-search-wrap">
+        <input id="user-search" data-i18n-ph="search_users" autocomplete="off">
+      </div>
+      <div id="user-results"></div>
+      <div id="friends-body"></div>
+    </div>
+    <div id="chat-view">
+      <div class="chat-head">
+        <button id="chat-back" class="icon-btn">←</button>
+        <b id="chat-title"></b>
+      </div>
+      <div id="chat-msgs"></div>
+      <div id="chat-drawers">
+        <div class="drawer" id="sticker-drawer"><div id="sticker-grid"></div></div>
+        <div class="drawer" id="gif-drawer"><div id="gif-grid"></div></div>
+      </div>
+      <div class="chat-input-row">
+        <button class="icon-btn" id="voice-btn" title="Voice">🎙️</button>
+        <button class="icon-btn" id="photo-btn" title="Photo">🖼️</button>
+        <button class="icon-btn" id="gif-btn" title="GIF">GIF</button>
+        <button class="icon-btn" id="sticker-btn" title="Sticker">😀</button>
+        <input id="chat-input" data-i18n-ph="chat_placeholder" autocomplete="off">
+        <button class="send-btn" id="chat-send">➤</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ============ PANEL: BOOKMARKS ============ -->
+<aside class="panel" id="panel-bookmarks">
+  <div class="panel-head"><h2 data-i18n="widget_bookmarks"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="bookmarks-body"></div>
+</aside>
+
+<!-- ============ PANEL: SETTINGS ============ -->
+<aside class="panel" id="panel-settings">
+  <div class="panel-head"><h2 data-i18n="settings_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="settings-body"></div>
+</aside>
+
+<!-- avatar picker overlay -->
+<div id="avatar-overlay">
+  <div class="ao-bg"><span></span><span></span><span></span></div>
+  <div class="ao-box">
+    <div class="ao-head">
+      <div class="ao-icon">🎭</div>
+      <div class="ao-titles">
+        <h2 data-i18n="av_pick_title"></h2>
+        <span class="ao-sub" data-i18n="av_pick_sub"></span>
+      </div>
+      <button id="avatar-close" class="icon-btn">✕</button>
+    </div>
+    <div class="ao-tabs">
+      <button class="ao-tab active" data-atab="gallery" data-i18n="av_gallery"></button>
+      <button class="ao-tab" data-atab="upload" data-i18n="av_upload_tab"></button>
+      <button class="ao-tab" data-atab="url" data-i18n="av_url_tab"></button>
+    </div>
+    <div class="ao-view" id="avtab-gallery">
+      <div class="ao-toolbar">
+        <div class="ao-chips" id="av-chips"></div>
+        <button class="ao-random" id="av-random">🎲 <span data-i18n="av_random"></span></button>
+      </div>
+      <div id="avatar-grid"></div>
+    </div>
+    <div class="ao-view" id="avtab-upload" style="display:none">
+      <div class="ao-dropzone" id="av-drop">
+        <div class="ao-dz-ico">📁</div>
+        <div data-i18n="av_drop"></div>
+      </div>
+      <div class="ao-preview-row">
+        <div class="ao-preview" id="av-up-preview">?</div>
+        <button class="btn primary" id="av-up-save" disabled data-i18n="save"></button>
+      </div>
+    </div>
+    <div class="ao-view" id="avtab-url" style="display:none">
+      <div class="ao-urlrow">
+        <input id="av-url" placeholder="https://… (.gif / .png / .jpg)">
+        <button class="btn" id="av-url-prev">👁️</button>
+        <button class="btn primary" id="av-url-save" data-i18n="save"></button>
+      </div>
+      <div class="ao-preview-row"><div class="ao-preview" id="av-url-preview">?</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/shim.js"></script>
+<script src="js/i18n.js"></script>
+<script src="js/store.js"></script>
+<script src="js/api.js"></script>
+<script src="js/wallpapers.js"></script>
+<script src="js/widgets.js"></script>
+<script src="js/search.js"></script>
+<script src="js/social.js"></script>
+<script src="js/panels.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

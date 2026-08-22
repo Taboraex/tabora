@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Welcome to Tabora ✨</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;700;900&family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root { --accent: #22d3ee; --violet: #8b5cf6; --pink: #f472b6; }
+  body {
+    min-height: 100vh; overflow-x: hidden; color: #f4f6ff;
+    font-family: 'Vazirmatn', 'Inter', sans-serif;
+    background: #050816; position: relative;
+  }
+  /* aurora background */
+  .aurora { position: fixed; inset: 0; z-index: -2; overflow: hidden; }
+  .aurora span {
+    position: absolute; border-radius: 50%; filter: blur(90px); opacity: .5;
+    animation: float 14s ease-in-out infinite alternate;
+  }
+  .aurora span:nth-child(1) { width: 55vw; height: 55vw; background: #0e7490; top: -18%; left: -10%; }
+  .aurora span:nth-child(2) { width: 46vw; height: 46vw; background: #6d28d9; bottom: -20%; right: -8%; animation-delay: -4s; }
+  .aurora span:nth-child(3) { width: 34vw; height: 34vw; background: #be185d; top: 30%; left: 40%; animation-delay: -8s; opacity: .3; }
+  @keyframes float { to { transform: translate(6vw, -5vh) scale(1.15); } }
+  .stars { position: fixed; inset: 0; z-index: -1; }
+  .stars i { position: absolute; width: 2px; height: 2px; background: #fff; border-radius: 50%; animation: tw 3s infinite; }
+  @keyframes tw { 50% { opacity: .15; } }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 5vh 24px 60px; text-align: center; }
+
+  /* logo */
+  .logo-box { display: inline-block; position: relative; margin-bottom: 22px; animation: pop .9s cubic-bezier(.2,1.4,.4,1) both; }
+  .logo-box img { width: 110px; height: 110px; border-radius: 30px; box-shadow: 0 0 60px rgba(34,211,238,.35); }
+  .logo-box::after {
+    content: ''; position: absolute; inset: -14px; border-radius: 40px;
+    border: 2px solid transparent;
+    background: linear-gradient(120deg, var(--accent), var(--violet), var(--pink)) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    animation: spin 5s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } }
+
+  h1 {
+    font-size: clamp(2rem, 6vw, 3.6rem); font-weight: 900; line-height: 1.35;
+    background: linear-gradient(120deg, #fff 20%, var(--accent) 55%, var(--violet));
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    animation: rise .8s .15s cubic-bezier(.2,.9,.3,1) both;
+  }
+  .sub { color: rgba(244,246,255,.6); font-size: clamp(.95rem, 2vw, 1.2rem); margin-top: 10px; animation: rise .8s .3s both; }
+  @keyframes rise { from { transform: translateY(26px); opacity: 0; } }
+
+  /* language pill */
+  .lang-pill { display: inline-flex; gap: 6px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12); padding: 5px; border-radius: 99px; margin: 26px 0 8px; animation: rise .8s .4s both; }
+  .lang-pill button { padding: 8px 22px; border: none; border-radius: 99px; color: #f4f6ff; font-family: inherit; font-weight: 700; font-size: .9rem; cursor: pointer; background: transparent; transition: .25s; }
+  .lang-pill button.active { background: linear-gradient(120deg, var(--accent), var(--violet)); color: #081018; }
+
+  /* feature cards */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 34px 0 30px; }
+  .card {
+    background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 22px; padding: 26px 18px; backdrop-filter: blur(14px);
+    transition: .3s; animation: rise .8s both;
+  }
+  .card:nth-child(1) { animation-delay: .45s; } .card:nth-child(2) { animation-delay: .6s; } .card:nth-child(3) { animation-delay: .75s; }
+  .card:hover { transform: translateY(-8px); border-color: var(--accent); box-shadow: 0 18px 50px rgba(34,211,238,.16); }
+  .card .ico { font-size: 2.2rem; display: block; margin-bottom: 12px; filter: drop-shadow(0 0 14px rgba(34,211,238,.5)); }
+  .card b { font-size: .98rem; line-height: 1.9; display: block; }
+
+  /* auth card */
+  .auth-card {
+    max-width: 440px; margin: 10px auto 0; background: rgba(10,13,30,.75);
+    border: 1px solid rgba(255,255,255,.12); border-radius: 26px; padding: 30px 28px;
+    backdrop-filter: blur(24px); text-align: start; animation: rise .8s .85s both;
+    box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  }
+  .auth-card h3 { font-size: 1.15rem; margin-bottom: 6px; }
+  .auth-card p { color: rgba(244,246,255,.55); font-size: .82rem; margin-bottom: 16px; line-height: 1.9; }
+  .auth-card input {
+    width: 100%; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.13);
+    border-radius: 14px; padding: 12px 15px; color: #fff; font-family: inherit; font-size: .92rem;
+    outline: none; margin-bottom: 11px; transition: .2s;
+  }
+  .auth-card input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(34,211,238,.18); }
+  .cta {
+    width: 100%; padding: 14px; border: none; border-radius: 15px; font-family: inherit;
+    font-size: 1rem; font-weight: 900; cursor: pointer; color: #081018;
+    background: linear-gradient(120deg, var(--accent), var(--violet)); background-size: 200%;
+    transition: .3s; margin-top: 4px;
+  }
+  .cta:hover { background-position: 100%; box-shadow: 0 10px 34px rgba(139,92,246,.4); transform: translateY(-2px); }
+  .ghost-btn { display: block; width: 100%; text-align: center; margin-top: 14px; color: rgba(244,246,255,.55); background: none; border: none; font-family: inherit; font-size: .85rem; cursor: pointer; text-decoration: underline; text-underline-offset: 5px; }
+  .swap { text-align: center; margin-top: 14px; font-size: .82rem; }
+  .swap button { background: none; border: none; color: var(--accent); cursor: pointer; font-family: inherit; font-size: .82rem; }
+  .err { color: #fda4af; font-size: .8rem; min-height: 1.2em; margin: 2px 0 6px; }
+
+  /* confetti */
+  .confetti { position: fixed; top: -12px; z-index: 50; pointer-events: none; animation: cf linear forwards; }
+  @keyframes cf { to { transform: translateY(105vh) rotate(720deg); } }
+
+  @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="aurora"><span></span><span></span><span></span></div>
+<div class="stars" id="stars"></div>
+
+<div class="wrap">
+  <div class="logo-box"><img src="../assets/icons/icon128.png" alt="Tabora"></div>
+  <h1 id="w-title">به تبورا خوش اومدی!</h1>
+  <div class="sub" id="w-sub">نیوتب کرومت از این لحظه یه چیز دیگه‌ست ✨</div>
+
+  <div class="lang-pill">
+    <button id="lang-fa" class="active">فارسی</button>
+    <button id="lang-en">English</button>
+  </div>
+
+  <div class="cards">
+    <div class="card"><span class="ico">🖼️</span><b id="f1">والپیپرهای متحرک با تم هوشمند</b></div>
+    <div class="card"><span class="ico">⚡</span><b id="f2">ویجت‌های زنده: آب‌وهوا، ارز، بوکمارک هوشمند</b></div>
+    <div class="card"><span class="ico">💬</span><b id="f3">دوستان و چت با ویس، عکس و استیکر</b></div>
+  </div>
+
+  <div class="auth-card">
+    <div id="form-login">
+      <h3 id="t-login">خوش برگشتی 👋</h3>
+      <p id="hint1">تنظیماتت توی فضای ابری ذخیره می‌شه؛ با هر آپدیت اکستنشن همه‌چیز سر جاش می‌مونه.</p>
+      <input id="l-id" placeholder="ایمیل یا نام کاربری">
+      <input id="l-pw" type="password" placeholder="رمز عبور">
+      <div class="err" id="l-err"></div>
+      <button class="cta" id="btn-login">ورود به تبورا</button>
+      <div class="swap"><span id="sw1">حساب نداری؟</span> <button id="to-reg">ثبت‌نام کن</button></div>
+    </div>
+    <div id="form-register" style="display:none">
+      <h3 id="t-reg">به تبورا بپیوند 🚀</h3>
+      <p id="hint2">یه حساب بساز تا پروفایل، آواتار متحرک و تنظیماتت همیشه همراهت باشه.</p>
+      <input id="r-email" type="email" placeholder="ایمیل">
+      <input id="r-uname" placeholder="نام کاربری (انگلیسی)">
+      <input id="r-name" placeholder="نام نمایشی">
+      <input id="r-pw" type="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)">
+      <div class="err" id="r-err"></div>
+      <button class="cta" id="btn-register">ساخت حساب و ورود</button>
+      <div class="swap"><span id="sw2">حساب داری؟</span> <button id="to-login">وارد شو</button></div>
+    </div>
+    <button class="ghost-btn" id="btn-guest">ادامه به عنوان مهمان</button>
+  </div>
+</div>
+
+<script src="../js/shim.js"></script>
+<script>
+const API_BASE = 'https://tabora-api.nexaextensionsir.workers.dev';
+let lang = 'fa';
+const TXT = {
+  fa: {
+    title: 'به تبورا خوش اومدی!', sub: 'نیوتب کرومت از این لحظه یه چیز دیگه‌ست ✨',
+    f1: 'والپیپرهای متحرک با تم هوشمند', f2: 'ویجت‌های زنده: آب‌وهوا، ارز، بوکمارک هوشمند', f3: 'دوستان و چت با ویس، عکس و استیکر',
+    tLogin: 'خوش برگشتی 👋', tReg: 'به تبورا بپیوند 🚀',
+    hint1: 'تنظیماتت توی فضای ابری ذخیره می‌شه؛ با هر آپدیت اکستنشن همه‌چیز سر جاش می‌مونه.',
+    hint2: 'یه حساب بساز تا پروفایل، آواتار متحرک و تنظیماتت همیشه همراهت باشه.',
+    btnLogin: 'ورود به تبورا', btnReg: 'ساخت حساب و ورود', guest: 'ادامه به عنوان مهمان',
+    sw1: 'حساب نداری؟', reg: 'ثبت‌نام کن', sw2: 'حساب داری؟', login: 'وارد شو',
+    ph: { lid: 'ایمیل یا نام کاربری', lpw: 'رمز عبور', re: 'ایمیل', ru: 'نام کاربری (انگلیسی)', rn: 'نام نمایشی', rp: 'رمز عبور (حداقل ۶ کاراکتر)' },
+    err: { bad_email: 'ایمیل معتبر نیست', bad_username: 'نام کاربری: ۳ تا ۲۰ حرف انگلیسی/عدد', bad_password: 'رمز حداقل ۶ کاراکتر', email_taken: 'این ایمیل قبلاً ثبت شده', username_taken: 'این نام کاربری گرفته شده', invalid_credentials: 'ایمیل یا رمز اشتباه است', rate_limited: 'خیلی سریع! کمی صبر کن' },
+    success: '🎉 خوش اومدی!'
+  },
+  en: {
+    title: 'Welcome to Tabora!', sub: 'Your Chrome new tab will never be the same ✨',
+    f1: 'Live wallpapers with smart theming', f2: 'Live widgets: weather, currency, smart bookmarks', f3: 'Friends & chat with voice, photos and stickers',
+    tLogin: 'Welcome back 👋', tReg: 'Join Tabora 🚀',
+    hint1: 'Your settings live in the cloud — they survive every extension update.',
+    hint2: 'Create an account so your profile, animated avatar and settings follow you everywhere.',
+    btnLogin: 'Enter Tabora', btnReg: 'Create account & enter', guest: 'Continue as guest',
+    sw1: 'No account?', reg: 'Sign up', sw2: 'Have an account?', login: 'Log in',
+    ph: { lid: 'Email or username', lpw: 'Password', re: 'Email', ru: 'Username', rn: 'Display name', rp: 'Password (min 6 chars)' },
+    err: { bad_email: 'Invalid email', bad_username: 'Username: 3–20 letters/numbers', bad_password: 'Password min 6 characters', email_taken: 'Email already registered', username_taken: 'Username is taken', invalid_credentials: 'Wrong email or password', rate_limited: 'Too fast! Wait a moment' },
+    success: '🎉 Welcome!'
+  }
+};
+function applyLang() {
+  const t = TXT[lang];
+  document.documentElement.dir = lang === 'fa' ? 'rtl' : 'ltr';
+  document.documentElement.lang = lang;
+  document.getElementById('w-title').textContent = t.title;
+  document.getElementById('w-sub').textContent = t.sub;
+  document.getElementById('f1').textContent = t.f1;
+  document.getElementById('f2').textContent = t.f2;
+  document.getElementById('f3').textContent = t.f3;
+  document.getElementById('t-login').textContent = t.tLogin;
+  document.getElementById('t-reg').textContent = t.tReg;
+  document.getElementById('hint1').textContent = t.hint1;
+  document.getElementById('hint2').textContent = t.hint2;
+  document.getElementById('btn-login').textContent = t.btnLogin;
+  document.getElementById('btn-register').textContent = t.btnReg;
+  document.getElementById('btn-guest').textContent = t.guest;
+  document.getElementById('sw1').textContent = t.sw1;
+  document.getElementById('to-reg').textContent = t.reg;
+  document.getElementById('sw2').textContent = t.sw2;
+  document.getElementById('to-login').textContent = t.login;
+  const p = t.ph;
+  document.getElementById('l-id').placeholder = p.lid;
+  document.getElementById('l-pw').placeholder = p.lpw;
+  document.getElementById('r-email').placeholder = p.re;
+  document.getElementById('r-uname').placeholder = p.ru;
+  document.getElementById('r-name').placeholder = p.rn;
+  document.getElementById('r-pw').placeholder = p.rp;
+  document.getElementById('lang-fa').classList.toggle('active', lang === 'fa');
+  document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+}
+document.getElementById('lang-fa').onclick = () => { lang = 'fa'; applyLang(); };
+document.getElementById('lang-en').onclick = () => { lang = 'en'; applyLang(); };
+
+/* stars */
+const stars = document.getElementById('stars');
+for (let i = 0; i < 70; i++) {
+  const s = document.createElement('i');
+  s.style.left = Math.random() * 100 + 'vw';
+  s.style.top = Math.random() * 100 + 'vh';
+  s.style.animationDelay = (Math.random() * 3) + 's';
+  s.style.opacity = Math.random() * .7 + .2;
+  stars.appendChild(s);
+}
+
+/* forms */
+document.getElementById('to-reg').onclick = () => { form('register'); };
+document.getElementById('to-login').onclick = () => { form('login'); };
+function form(m) {
+  document.getElementById('form-login').style.display = m === 'login' ? 'block' : 'none';
+  document.getElementById('form-register').style.display = m === 'register' ? 'block' : 'none';
+}
+
+async function saveAndGo(token, user) {
+  const store = { token, user, settings: { lang } };
+  await chrome.storage.local.set({ token, user, settings: store.settings });
+  celebrate();
+  const t = TXT[lang];
+  document.querySelector('.auth-card').innerHTML = `<h3 style="text-align:center;font-size:1.5rem">${t.success}</h3><br><button class="cta" id="btn-enter">${t.btnLogin} →</button>`;
+  document.getElementById('btn-enter').onclick = enter;
+}
+function enter() {
+  if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) chrome.tabs.create({});
+  else location.href = '../index.html';
+}
+document.getElementById('btn-guest').onclick = async () => {
+  await chrome.storage.local.set({ settings: { lang } });
+  celebrate();
+  setTimeout(enter, 900);
+};
+
+async function api(path, body) {
+  const r = await fetch(API_BASE + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || 'http_' + r.status);
+  return d;
+}
+document.getElementById('btn-login').onclick = async () => {
+  const errEl = document.getElementById('l-err'); errEl.textContent = '';
+  try {
+    const d = await api('/api/login', { identifier: document.getElementById('l-id').value.trim(), password: document.getElementById('l-pw').value });
+    await saveAndGo(d.token, d.user);
+  } catch (e) { errEl.textContent = TXT[lang].err[e.message] || e.message; }
+};
+document.getElementById('btn-register').onclick = async () => {
+  const errEl = document.getElementById('r-err'); errEl.textContent = '';
+  try {
+    const d = await api('/api/register', {
+      email: document.getElementById('r-email').value.trim(),
+      username: document.getElementById('r-uname').value.trim(),
+      name: document.getElementById('r-name').value.trim(),
+      password: document.getElementById('r-pw').value
+    });
+    await saveAndGo(d.token, d.user);
+  } catch (e) { errEl.textContent = TXT[lang].err[e.message] || e.message; }
+};
+
+/* confetti */
+function celebrate() {
+  const colors = ['#22d3ee', '#8b5cf6', '#f472b6', '#fbbf24', '#34d399'];
+  for (let i = 0; i < 90; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti';
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.width = c.style.height = (5 + Math.random() * 7) + 'px';
+    c.style.background = colors[i % colors.length];
+    c.style.borderRadius = Math.random() > .5 ? '50%' : '2px';
+    c.style.animationDuration = (2.4 + Math.random() * 2.2) + 's';
+    c.style.animationDelay = (Math.random() * .7) + 's';
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 5500);
+  }
+}
+applyLang();
+</script>
+</body>
+</html>

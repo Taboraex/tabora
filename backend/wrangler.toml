@@ -1,0 +1,11 @@
+name = "tabora-api"
+main = "index.js"
+compatibility_date = "2024-09-23"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tabora"
+database_id = "e378141b-805c-490a-952a-25d622bb2104"
+
+[vars]
+OWNER_EMAIL = ""

@@ -1,0 +1,13 @@
+# Cloudflare / wrangler state & secrets
+.wrangler/
+.dev.vars
+node_modules/
+*.log
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# builds
+dist/
+*.zip
