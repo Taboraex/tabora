@@ -77,6 +77,15 @@ const App = {
     document.getElementById('auth-to-login').onclick = () => Panels.authMode('login');
     document.getElementById('login-btn').onclick = () => Panels.doLogin();
     document.getElementById('register-btn').onclick = () => Panels.doRegister();
+    document.querySelectorAll('.eye').forEach(b => {
+      b.onclick = () => {
+        const inp = document.getElementById(b.dataset.for);
+        const show = inp.type === 'password';
+        inp.type = show ? 'text' : 'password';
+        b.classList.toggle('on', show);
+        inp.focus();
+      };
+    });
     document.getElementById('auth-guest').onclick = () => Panels.closeAll();
 
     /* friends panel */

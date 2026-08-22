@@ -536,3 +536,10 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 .faq summary::after { content: "▾"; transition: .25s; opacity: .6; }
 .faq[open] summary::after { transform: rotate(180deg); }
 .faq p { margin: 0; padding: 0 14px 12px; font-size: .78rem; opacity: .8; line-height: 1.8; }
+
+/* ===== password reveal ===== */
+.pw-wrap { position: relative; display: block; }
+.pw-wrap input { width: 100%; padding-inline-end: 40px !important; }
+.eye { position: absolute; inset-inline-end: 4px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: .95rem; opacity: .5; padding: 4px 6px; }
+.eye:hover { opacity: 1; }
+.eye.on { opacity: 1; filter: drop-shadow(0 0 6px rgba(34,211,238,.8)); }

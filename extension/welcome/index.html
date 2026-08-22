@@ -101,6 +101,13 @@
 
   @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
 
+  /* password reveal */
+  .pw-wrap { position: relative; }
+  .pw-wrap input { width: 100%; padding-inline-end: 44px !important; }
+  .eye { position: absolute; inset-inline-end: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1rem; opacity: .55; padding: 4px 6px; }
+  .eye:hover { opacity: 1; }
+  .eye.on { opacity: 1; filter: drop-shadow(0 0 6px rgba(34,211,238,.8)); }
+
   /* app preview window */
   .preview-frame { max-width: 430px; margin: 26px auto 4px; border-radius: 18px; overflow: hidden;
     border: 1px solid rgba(255,255,255,.14); background: rgba(10,14,31,.6); backdrop-filter: blur(14px);
@@ -144,7 +151,7 @@
       <h3 id="t-login">خوش برگشتی 👋</h3>
       <p id="hint1">تنظیماتت توی فضای ابری ذخیره می‌شه؛ با هر آپدیت اکستنشن همه‌چیز سر جاش می‌مونه.</p>
       <input id="l-id" placeholder="ایمیل یا نام کاربری">
-      <input id="l-pw" type="password" placeholder="رمز عبور">
+      <div class="pw-wrap"><input id="l-pw" type="password" placeholder="رمز عبور"><button type="button" class="eye" data-for="l-pw" title="👁">👁</button></div>
       <div class="err" id="l-err"></div>
       <button class="cta" id="btn-login">ورود به تبورا</button>
       <div class="swap"><span id="sw1">حساب نداری؟</span> <button id="to-reg">ثبت‌نام کن</button></div>
@@ -155,7 +162,7 @@
       <input id="r-email" type="email" placeholder="ایمیل">
       <input id="r-uname" placeholder="نام کاربری (انگلیسی)">
       <input id="r-name" placeholder="نام نمایشی">
-      <input id="r-pw" type="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)">
+      <div class="pw-wrap"><input id="r-pw" type="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)"><button type="button" class="eye" data-for="r-pw" title="👁">👁</button></div>
       <div class="err" id="r-err"></div>
       <button class="cta" id="btn-register">ساخت حساب و ورود</button>
       <div class="swap"><span id="sw2">حساب داری؟</span> <button id="to-login">وارد شو</button></div>
@@ -178,7 +185,7 @@ const TXT = {
     btnLogin: 'ورود به تبورا', btnReg: 'ساخت حساب و ورود', guest: 'ادامه به عنوان مهمان',
     sw1: 'حساب نداری؟', reg: 'ثبت‌نام کن', sw2: 'حساب داری؟', login: 'وارد شو',
     ph: { lid: 'ایمیل یا نام کاربری', lpw: 'رمز عبور', re: 'ایمیل', ru: 'نام کاربری (انگلیسی)', rn: 'نام نمایشی', rp: 'رمز عبور (حداقل ۶ کاراکتر)' },
-    err: { bad_email: 'ایمیل معتبر نیست', bad_username: 'نام کاربری: ۳ تا ۲۰ حرف انگلیسی/عدد', bad_password: 'رمز حداقل ۶ کاراکتر', email_taken: 'این ایمیل قبلاً ثبت شده', username_taken: 'این نام کاربری گرفته شده', invalid_credentials: 'ایمیل یا رمز اشتباه است', rate_limited: 'خیلی سریع! کمی صبر کن' },
+    err: { bad_email: 'ایمیل معتبر نیست', bad_username: 'نام کاربری: ۳ تا ۲۰ حرف انگلیسی/عدد', bad_password: 'رمز حداقل ۶ کاراکتر', email_taken: 'این ایمیل قبلاً ثبت شده', username_taken: 'این نام کاربری گرفته شده', invalid_credentials: 'رمز اشتباهه — با دکمهٔ 👁 بررسی کن', user_not_found: 'حسابی پیدا نشد — اول ثبت‌نام کن', rate_limited: 'خیلی سریع! کمی صبر کن' },
     success: '🎉 خوش اومدی!'
   },
   en: {
@@ -190,7 +197,7 @@ const TXT = {
     btnLogin: 'Enter Tabora', btnReg: 'Create account & enter', guest: 'Continue as guest',
     sw1: 'No account?', reg: 'Sign up', sw2: 'Have an account?', login: 'Log in',
     ph: { lid: 'Email or username', lpw: 'Password', re: 'Email', ru: 'Username', rn: 'Display name', rp: 'Password (min 6 chars)' },
-    err: { bad_email: 'Invalid email', bad_username: 'Username: 3–20 letters/numbers', bad_password: 'Password min 6 characters', email_taken: 'Email already registered', username_taken: 'Username is taken', invalid_credentials: 'Wrong email or password', rate_limited: 'Too fast! Wait a moment' },
+    err: { bad_email: 'Invalid email', bad_username: 'Username: 3–20 letters/numbers', bad_password: 'Password min 6 characters', email_taken: 'Email already registered', username_taken: 'Username is taken', invalid_credentials: 'Wrong password — use the 👁 button to check', user_not_found: 'No account found — register first', rate_limited: 'Too fast! Wait a moment' },
     success: '🎉 Welcome!'
   }
 };
@@ -306,6 +313,15 @@ function celebrate() {
     setTimeout(() => c.remove(), 5500);
   }
 }
+document.querySelectorAll('.eye').forEach(b => {
+  b.onclick = () => {
+    const inp = document.getElementById(b.dataset.for);
+    const show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password';
+    b.classList.toggle('on', show);
+    inp.focus();
+  };
+});
 applyLang();
 </script>
 </body>

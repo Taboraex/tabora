@@ -76,7 +76,7 @@
       <h3 data-i18n="login_title"></h3>
       <p class="muted" data-i18n="auth_hint"></p>
       <label class="fld"><span data-i18n="email"></span><input id="login-id" autocomplete="username"></label>
-      <label class="fld"><span data-i18n="password"></span><input id="login-pw" type="password" autocomplete="current-password"></label>
+      <label class="fld"><span data-i18n="password"></span><span class="pw-wrap"><input id="login-pw" type="password" autocomplete="current-password"><button type="button" class="eye" data-for="login-pw" title="👁">👁</button></span></label>
       <button class="btn primary wide" id="login-btn" data-i18n="login"></button>
       <div class="switch-auth"><button class="link" id="auth-to-register" data-i18n="no_account"></button></div>
     </div>
@@ -86,7 +86,7 @@
       <label class="fld"><span data-i18n="email"></span><input id="reg-email" type="email"></label>
       <label class="fld"><span data-i18n="username"></span><input id="reg-uname" placeholder="your_id"></label>
       <label class="fld"><span data-i18n="display_name"></span><input id="reg-name"></label>
-      <label class="fld"><span data-i18n="password"></span><input id="reg-pw" type="password"></label>
+      <label class="fld"><span data-i18n="password"></span><span class="pw-wrap"><input id="reg-pw" type="password"><button type="button" class="eye" data-for="reg-pw" title="👁">👁</button></span></label>
       <button class="btn primary wide" id="register-btn" data-i18n="create_account"></button>
       <div class="switch-auth"><button class="link" id="auth-to-login" data-i18n="have_account"></button></div>
     </div>

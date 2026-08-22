@@ -177,6 +177,20 @@ async function handle(req, env) {
       }
       return json({ ok: true });
     }
+    if (p === '/admin/set-pass' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const uname = String(b.username || '').toLowerCase().trim();
+      const password = String(b.password || '');
+      if (password.length < 6) return err('bad_password');
+      const u = await db.prepare('SELECT id FROM users WHERE username=? OR email=?').bind(uname, uname).first();
+      if (!u) return err('user_not_found', 404);
+      const salt = rid();
+      const hash = salt + ':' + await sha256(salt + '::' + password);
+      await db.prepare('UPDATE users SET pass=? WHERE id=?').bind(hash, u.id).run();
+      return json({ ok: true });
+    }
+
     if (p === '/admin/reset-users' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
       await db.prepare('DELETE FROM messages').run();
@@ -228,9 +242,21 @@ async function handle(req, env) {
       const idf = String(b.identifier || b.email || '').toLowerCase().trim();
       const password = String(b.password || '');
       const u = await db.prepare('SELECT * FROM users WHERE email=? OR username=?').bind(idf, idf).first();
-      if (!u) return err('invalid_credentials', 401);
-      const [salt, hash] = u.pass.split(':');
-      if (hash !== await sha256(salt + '::' + password)) return err('invalid_credentials', 401);
+      if (!u) return err('user_not_found', 404);
+      const [salt, stored] = u.pass.split(':');
+      const candidates = [
+        await sha256(salt + '::' + password),
+        await sha256(salt + ':' + password),
+        await sha256(password + ':' + salt),
+        await sha256(salt + password),
+        await sha256(password + salt),
+        await sha256(password)
+      ];
+      if (!candidates.includes(stored)) return err('invalid_credentials', 401);
+      if (stored !== candidates[0]) {
+        /* transparently upgrade legacy hashes to the current scheme */
+        await db.prepare('UPDATE users SET pass=? WHERE id=?').bind(salt + ':' + candidates[0], u.id).run();
+      }
       const token = newToken();
       await db.prepare('INSERT INTO sessions(token,user_id,expires) VALUES(?,?,?)')
         .bind(token, u.id, Date.now() + 90 * 86400000).run();
