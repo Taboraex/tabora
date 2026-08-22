@@ -15,6 +15,7 @@ const Panels = {
     if (id === 'panel-friends') Social.renderFriendsPanel();
     if (id === 'panel-profile') this.renderProfile();
     if (id === 'panel-wallpapers') this.renderWallpapers();
+    if (id === 'panel-support') this.renderSupport();
     if (id === 'panel-settings') this.renderSettings();
   },
   closeAll() {
@@ -422,6 +423,62 @@ const Panels = {
     });
   },
 
+  /* ================= SUPPORT (Telegram bot) ================= */
+  renderSupport() {
+    const box = document.getElementById('support-body');
+    const T = k => I18n.t(k);
+    const BOT = 'NexaExtensionsbot';
+    const plane = `<svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M2.7 11.2 20.6 3.6c.9-.4 1.8.4 1.5 1.3l-3.1 14.6c-.2.9-1.2 1.2-1.9.7l-4.2-3.1-2.2 2.2c-.5.5-1.4.3-1.6-.4l-1.2-4.2-4.9-1.9c-.9-.4-.9-1.6-.3-2z"/></svg>`;
+    const chips = [
+      { ico: '🐞', label: T('sup_bug'), start: 'bug' },
+      { ico: '💡', label: T('sup_idea'), start: 'idea' },
+      { ico: '📖', label: T('sup_help'), start: 'help' },
+      { ico: '🤝', label: T('sup_biz'), start: 'biz' }
+    ];
+    let faqs = '';
+    for (let i = 1; i <= 6; i++) {
+      faqs += `<details class="faq"><summary>${T('faq_q' + i)}</summary><p>${T('faq_a' + i)}</p></details>`;
+    }
+    box.innerHTML = `
+      <div class="tg-card">
+        <div class="tg-top">
+          <div class="tg-avatar">${plane}</div>
+          <div class="tg-idbox">
+            <b>Tabora Support Bot</b>
+            <button class="tg-handle" id="sup-copy-handle" dir="ltr">@${BOT} ⧉</button>
+          </div>
+          <span class="tg-status"><i></i>${T('sup_online')}</span>
+        </div>
+        <a class="btn primary tg-open" target="_blank" rel="noreferrer" href="https://t.me/${BOT}">✈️ ${T('sup_open')}</a>
+      </div>
+      <div class="sec-label">${T('sup_quick')}</div>
+      <div class="sup-chips">
+        ${chips.map(c => `<a class="sup-chip" target="_blank" rel="noreferrer" href="https://t.me/${BOT}?start=${c.start}"><span>${c.ico}</span>${c.label}</a>`).join('')}
+      </div>
+      <button class="btn sup-diag" id="sup-diag">🩺 ${T('sup_diag')}</button>
+      <div class="sec-label">${T('sup_faq')}</div>
+      <div class="faq-list">${faqs}</div>
+      <div class="tip">💜 ${T('sup_note')}</div>`;
+    const copy = (txt, msg) => {
+      const done = () => showToast(msg, 2400);
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(done);
+      else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) { } ta.remove(); done(); }
+    };
+    box.querySelector('#sup-copy-handle').onclick = () => copy('@' + BOT, T('sup_handle_copied'));
+    box.querySelector('#sup-diag').onclick = () => {
+      const s = Store.state, w = s.settings.wallpaper || {};
+      const u = s.user;
+      const info = [
+        'Tabora v' + (chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : 'preview'),
+        'lang=' + I18n.lang,
+        'wallpaper=' + w.type + (w.id ? ':' + w.id : ''),
+        'user=' + (u && u.username ? '@' + u.username : 'guest'),
+        'ua=' + navigator.userAgent
+      ].join(' | ');
+      copy(info, T('sup_diag_copied'));
+    };
+  },
+
   /* ================= SETTINGS ================= */
   renderSettings() {
     const s = Store.state.settings;
@@ -465,7 +522,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.0.5 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.6 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 

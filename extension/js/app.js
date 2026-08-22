@@ -62,6 +62,7 @@ const App = {
     document.getElementById('dock-wallpapers').onclick = () => Panels.open('panel-wallpapers');
     document.getElementById('dock-bookmarks').onclick = () => Panels.openBookmarks();
     document.getElementById('dock-friends').onclick = () => Panels.open('panel-friends');
+    document.getElementById('dock-support').onclick = () => Panels.open('panel-support');
     document.getElementById('dock-settings').onclick = () => Panels.open('panel-settings');
 
     /* backdrop / esc */
