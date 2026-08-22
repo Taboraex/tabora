@@ -100,6 +100,18 @@
   @keyframes cf { to { transform: translateY(105vh) rotate(720deg); } }
 
   @media (max-width: 760px) { .cards { grid-template-columns: 1fr; } }
+
+  /* app preview window */
+  .preview-frame { max-width: 430px; margin: 26px auto 4px; border-radius: 18px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,.14); background: rgba(10,14,31,.6); backdrop-filter: blur(14px);
+    box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 40px rgba(139,92,246,.18); animation: floaty 6s ease-in-out infinite; }
+  .pf-bar { display: flex; align-items: center; gap: 6px; padding: 9px 12px; background: rgba(255,255,255,.06); }
+  .pf-bar span { width: 9px; height: 9px; border-radius: 50%; background: #ff5f57; }
+  .pf-bar span:nth-child(2) { background: #febc2e; }
+  .pf-bar span:nth-child(3) { background: #28c840; }
+  .pf-bar i { font-style: normal; font-size: .68rem; color: rgba(255,255,255,.45); background: rgba(255,255,255,.07); border-radius: 999px; padding: 3px 12px; margin-inline-start: 8px; flex: 1; text-align: center; }
+  .preview-frame img { display: block; width: 100%; }
+  @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
 </style>
 </head>
 <body>
@@ -120,6 +132,11 @@
     <div class="card"><span class="ico">🖼️</span><b id="f1">والپیپرهای متحرک با تم هوشمند</b></div>
     <div class="card"><span class="ico">⚡</span><b id="f2">ویجت‌های زنده: آب‌وهوا، ارز، بوکمارک هوشمند</b></div>
     <div class="card"><span class="ico">💬</span><b id="f3">دوستان و چت با ویس، عکس و استیکر</b></div>
+  </div>
+
+  <div class="preview-frame">
+    <div class="pf-bar"><span></span><span></span><span></span><i>tabora://newtab</i></div>
+    <img src="../assets/app-preview.jpg" alt="Tabora new tab preview">
   </div>
 
   <div class="auth-card">

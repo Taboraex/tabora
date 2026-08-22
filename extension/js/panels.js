@@ -465,7 +465,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.0.4 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.5 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
