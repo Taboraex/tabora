@@ -9,3 +9,9 @@ database_id = "95b27545-ccfe-43b8-aa81-7bdd859313ac"
 
 [vars]
 OWNER_EMAIL = ""
+
+# Telegram support-bot database (read fallback for /api/recover bot tokens)
+[[d1_databases]]
+binding = "SUPDB"
+database_name = "support"
+database_id = "158a6331-59fd-4bd5-afda-df128e935e0a"

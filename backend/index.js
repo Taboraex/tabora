@@ -719,7 +719,7 @@ async function handle(req, env) {
       await ensureRecoveryCol(db);
       const u = await db.prepare('SELECT * FROM users WHERE email=? OR username=?').bind(idf, idf).first();
       if (!u) return err('bad_code', 401);
-      let ok = false, usedTokenKey = null;
+      let ok = false, usedTokenKey = null, usedSup = false;
       if (u.recovery && u.recovery === await sha256('rc::' + code)) ok = true;
       if (!ok) {
         const tk = await db.prepare("SELECT value FROM kv WHERE key=?").bind('rst:' + await sha256('rc::' + code)).first();
@@ -729,8 +729,19 @@ async function handle(req, env) {
           if (meta.uid === u.id && meta.exp > Date.now()) { ok = true; usedTokenKey = 'rst:' + await sha256('rc::' + code); }
         }
       }
+      if (!ok && env.SUPDB) {
+        /* accept one-time tokens issued by the Telegram support bot (its own D1) */
+        try {
+          const raw = String(b.code || '').trim().toUpperCase();
+          const brow = await env.SUPDB.prepare('SELECT expires_at, used_at FROM reset_tokens WHERE UPPER(token)=?').bind(raw).first();
+          if (brow && !brow.used_at && Number(brow.expires_at) > Date.now()) { ok = true; usedSup = true; }
+        } catch (e) { }
+      }
       if (!ok) return err(u.recovery ? 'bad_code' : 'no_recovery', 401);
       if (usedTokenKey) await kvDel(db, usedTokenKey); /* one-time */
+      if (usedSup) {
+        try { await env.SUPDB.prepare('UPDATE reset_tokens SET used_at=? WHERE UPPER(token)=?').bind(Date.now(), String(b.code || '').trim().toUpperCase()).run(); } catch (e) { }
+      }
       const salt = rid();
       await db.prepare('UPDATE users SET pass=? WHERE id=?').bind(salt + ':' + await sha256(salt + '::' + password), u.id).run();
       await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id).run();
