@@ -65,6 +65,20 @@ async function kvSet(db, key, value) {
 async function kvDel(db, key) {
   await db.prepare('DELETE FROM kv WHERE key=?').bind(key).run();
 }
+async function ghFetch(env, path, method, bodyObj) {
+  const r = await fetch('https://api.github.com/repos/Taboraex/tabora/releases' + path, {
+    method: method || 'GET',
+    headers: {
+      'Authorization': 'Bearer ' + (env.GITHUB_TOKEN || ''),
+      'Accept': 'application/vnd.github+json',
+      'User-Agent': 'TaboraAdminPanel',
+      'X-GitHub-Api-Version': '2022-11-28'
+    },
+    body: bodyObj ? JSON.stringify(bodyObj) : undefined
+  });
+  const d = await r.json().catch(() => ({}));
+  return { status: r.status, data: d };
+}
 function genResetToken() {
   const a = rid().replace(/-/g, '').slice(0, 8).toUpperCase();
   return 'RST-' + a.slice(0, 4) + '-' + a.slice(4, 8);
@@ -220,6 +234,7 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
     <button class="on" onclick="tab('dash',this)">📊 نمای کلی</button>
     <button onclick="tab('users',this)">👥 کاربران</button>
     <button onclick="tab('release',this)"> انتشار</button>
+    <button onclick="tab('rels',this)">🚀 نسخه‌ها</button>
     <button onclick="tab('ann',this)">📢 اطلاعیه</button>
     <button onclick="tab('danger',this)">⚠️ منطقه خطر</button>
   </div>
@@ -262,6 +277,11 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
     </div>
   </div>
 
+  <div id="v-rels" class="hide">
+    <div class="card"><h2>⏳ در انتظار تایید شما (پیش‌نویس)</h2><div id="rels-pend"></div></div>
+    <div class="card"><h2>✅ منتشرشده‌ها</h2><div id="rels-live"></div></div>
+  </div>
+
   <div id="v-ann" class="hide">
     <div class="card"><h2>📢 اطلاعیه به همه کاربران اکستنشن</h2>
       <span class="lbl">متن اطلاعیه (خالی = غیرفعال)</span>
@@ -293,7 +313,11 @@ function api(path,body){return fetch(path,{method:body?'POST':'GET',headers:{'Co
 function doLogin(){var k=document.getElementById('key').value.trim();if(!k)return;sessionStorage.setItem('tk',k);api('/admin/stats').then(function(){enter();}).catch(function(e){var m=document.getElementById('lmsg');m.className='msg er';m.textContent='کلید اشتباه است: '+e.message;sessionStorage.removeItem('tk');});}
 function logout(){sessionStorage.removeItem('tk');location.reload();}
 function enter(){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadDash();}
-function tab(id,btn){['dash','users','release','ann','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='ann')loadAnn();}
+function tab(id,btn){['dash','users','release','rels','ann','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='rels')loadRels();if(id==='ann')loadAnn();}
+function loadRels(){api('/admin/gh/releases').then(function(d){var pend='',live='';d.releases.forEach(function(r){var prot='';for(var i=0;i<r.assets.length;i++){if(r.assets[i].name==='tabora-protected.zip')prot=r.assets[i].url;}var acts='';if(r.draft){acts='<button class="btn sm" onclick="pubRel('+r.id+')">✅ تایید و انتشار</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑 حذف</button>';}else{acts='<span class="badge b-owner">live</span>'+(prot?' <button class="btn sm gray" onclick="pinRel(\\''+prot+'\\')">📌 دانلود</button>':'');}var card='<div style="border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+(r.name||'')+'<br><span style="font-size:.66rem;opacity:.55">'+(r.draft?'پیش‌نویس — منتظر تایید شما':('منتشرشده: '+new Date(r.published_at).toLocaleString('fa-IR')))+'</span></div><div class="row">'+acts+'</div></div></div>';if(r.draft)pend+=card;else live+=card;});document.getElementById('rels-pend').innerHTML=pend||'<p style="opacity:.5;font-size:.75rem">هیچ نسخه‌ای منتظر تایید نیست ✔</p>';document.getElementById('rels-live').innerHTML=live||'';}).catch(function(e){msg('خطا: '+e.message);});}
+function pubRel(id){if(!confirm('این نسخه منتشر و به‌عنوان latest تنظیم شود؟'))return;api('/admin/gh/publish',{id:id}).then(function(){msg('نسخه منتشر شد 🚀',true);loadRels();}).catch(function(e){msg(e.message);});}
+function delRel(id){if(!confirm('پیش‌نویس برای همیشه حذف شود؟'))return;api('/admin/gh/delete',{id:id}).then(function(){msg('حذف شد',true);loadRels();}).catch(function(e){msg(e.message);});}
+function pinRel(url){api('/admin/settings',{settings:{download_url:url}}).then(function(){msg('لینک دانلود روی این نسخه قفل شد 📌',true);}).catch(function(e){msg(e.message);});}
 function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});}
 var USERS=[];
 function loadUsers(){api('/admin/users').then(function(d){USERS=d.users;var t=document.getElementById('utable');t.innerHTML='<tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>تاریخ</th><th>عملیات</th></tr>';USERS.forEach(function(u){var tr=document.createElement('tr');tr.innerHTML='<td><b>'+u.username+'</b><br><span style="opacity:.5;font-size:.66rem">'+u.name+'</span></td><td dir="ltr" style="text-align:right">'+u.email+'</td><td><span class="badge b-'+u.role+'">'+u.role+'</span></td><td style="font-size:.66rem;opacity:.6">'+new Date(u.created_at).toLocaleDateString('fa-IR')+'</td><td><select onchange="setRole(\\''+u.username+'\\',this.value)" style="width:auto;padding:4px 8px;font-size:.7rem"><option'+(u.role==='user'?' selected':'')+'>user</option><option'+(u.role==='admin'?' selected':'')+'>admin</option><option'+(u.role==='owner'?' selected':'')+'>owner</option></select> <button class="btn sm gray" onclick="setPass(\\''+u.username+'\\')">🔑</button> <button class="btn sm gray" onclick="viewU(\\''+u.username+'\\')">👁</button> <button class="btn sm red" onclick="delU(\\''+u.username+'\\')">🗑</button></td>';t.appendChild(tr);});});}
@@ -433,6 +457,32 @@ async function handle(req, env) {
       if (!hasKey) return err('forbidden', 403);
       await db.prepare('DELETE FROM sessions').run();
       return json({ ok: true });
+    }
+
+    /* ---------- github release control (proxy — token never leaves the worker) ---------- */
+    if (p === '/admin/gh/releases' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      const g = await ghFetch(env, '?per_page=14');
+      if (g.status !== 200 || !Array.isArray(g.data)) return json({ error: 'github_' + g.status }, 502);
+      return json({
+        releases: g.data.map(r => ({
+          id: r.id, tag: r.tag_name, name: r.name, draft: !!r.draft,
+          published_at: r.published_at, created_at: r.created_at,
+          assets: (r.assets || []).map(a => ({ name: a.name, size: a.size, url: a.browser_download_url }))
+        }))
+      });
+    }
+    if (p === '/admin/gh/publish' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'PATCH', { draft: false, make_latest: 'true' });
+      return json({ ok: g.status === 200, status: g.status });
+    }
+    if (p === '/admin/gh/delete' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'DELETE');
+      return json({ ok: g.status === 204 || g.status === 200, status: g.status });
     }
 
     if (p === '/admin/settings' && req.method === 'GET') {

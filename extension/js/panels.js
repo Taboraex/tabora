@@ -521,6 +521,13 @@ const Panels = {
       <button class="btn" id="gen-recovery">🔐 ${I18n.t('gen_recovery')}</button>
     </div>` : ''}
     <div class="set-sec glass">
+      <div class="sec-label">🐾 ${I18n.t('pet_title')}</div>
+      <label class="sw-row"><span>${I18n.t('pet_show')}</span><input type="checkbox" id="set-pet" ${(Store.state.settings.pet || {}).enabled !== false ? 'checked' : ''}></label>
+      <label class="sw-row"><span>${I18n.t('pet_species')}</span>
+        <select id="set-pet-sp">${Pet.species.map(x => `<option value="${x.id}" ${(Store.state.settings.pet || {}).species === x.id ? 'selected' : ''}>${I18n.lang === 'fa' ? x.fa : x.en}</option>`).join('')}</select></label>
+      <label class="sw-row"><span>${I18n.t('pet_name')}</span><input id="set-pet-name" maxlength="14" value="${((Store.state.settings.pet || {}).name || '').replace(/"/g, '&quot;')}" placeholder="—"></label>
+    </div>
+    <div class="set-sec glass">
       <div class="sec-label">🌐 ${I18n.t('set_language')}</div>
       <div class="seg">
         <button data-lang="fa" class="${s.lang === 'fa' ? 'active' : ''}">فارسی</button>
@@ -558,7 +565,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.1.2 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.1.3 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
@@ -578,6 +585,9 @@ const Panels = {
       try { const d = await Api.regenRecovery(); if (d && d.code) this.showCodeModal(d.code); }
       catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
     };
+    box.querySelector('#set-pet').onchange = e => Pet.save({ enabled: e.target.checked });
+    box.querySelector('#set-pet-sp').onchange = e => Pet.save({ species: e.target.value });
+    box.querySelector('#set-pet-name').onchange = e => Pet.save({ name: e.target.value.trim() });
     box.querySelector('#set-wp').onclick = () => this.open('panel-wallpapers');
     const sy = box.querySelector('#set-sync');
     if (sy) sy.onclick = async () => { await Api.pullCloud(); Widgets.renderAll(); showToast(I18n.t('cloud_synced')); };
