@@ -110,18 +110,34 @@ const Widgets = {
     const row = document.getElementById('widgets-row');
     row.innerHTML = '';
     const s = Store.state.settings;
-    const order = (s.widgets && s.widgets.order) || ['weather', 'prices', 'bookmarks', 'quote'];
+    const def = ['weather', 'prices', 'bookmarks', 'quote', 'focus', 'todo'];
+    let order = (s.widgets && s.widgets.order) || def;
+    def.forEach(id => { if (!order.includes(id)) order.push(id); });
     const hidden = (s.widgets && s.widgets.hidden) || [];
+    let i = 0;
     order.forEach(id => {
       if (hidden.includes(id)) return;
       const w = this.build(id);
-      if (w) row.appendChild(w);
+      if (w) { w.classList.add('w-in'); w.style.animationDelay = (i++ * 80) + 'ms'; row.appendChild(w); }
     });
     row.style.transform = `scale(${s.scale || 1})`;
+    if (!this._spot) {
+      this._spot = true;
+      row.addEventListener('mousemove', e => {
+        row.querySelectorAll('.widget').forEach(w => {
+          const r = w.getBoundingClientRect();
+          w.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+          w.style.setProperty('--my', (e.clientY - r.top) + 'px');
+        });
+      });
+    }
     this.renderWeather();
     this.renderPrices();
     this.renderBookmarks();
     this.renderQuote();
+    this.renderFocus();
+    this.renderTodo();
+    if (window.I18n) I18n.applyLang(I18n.lang);
   },
 
   build(id) {
@@ -141,6 +157,17 @@ const Widgets = {
     } else if (id === 'quote') {
       card.id = 'w-quote';
       card.innerHTML = `<div class="w-title"><span>💫</span><b data-i18n="widget_quote"></b></div><div class="q-text"></div>`;
+    } else if (id === 'focus') {
+      card.id = 'w-focus';
+      card.innerHTML = `<div class="w-title"><span>⏱️</span><b data-i18n="widget_focus"></b><span class="w-badge" id="fz-mode"></span></div>
+        <div class="fz-wrap"><svg viewBox="0 0 100 100" class="fz-ring"><circle cx="50" cy="50" r="42" class="fz-bg"/><circle cx="50" cy="50" r="42" class="fz-fg" id="fz-fg"/></svg>
+        <div class="fz-mid"><b id="fz-time" dir="ltr">25:00</b><small id="fz-st"></small></div></div>
+        <div class="fz-btns"><button id="fz-go" class="btn primary sm"></button><button id="fz-re" class="btn sm" title="↺">↺</button></div>`;
+    } else if (id === 'todo') {
+      card.id = 'w-todo';
+      card.innerHTML = `<div class="w-title"><span>✅</span><b data-i18n="widget_todo"></b><span class="w-badge" id="td-count"></span></div>
+        <div class="td-add"><input id="td-in" maxlength="42"><button id="td-add">+</button></div>
+        <div class="td-list" id="td-list"></div>`;
     } else return null;
     return card;
   },
@@ -311,5 +338,97 @@ const Widgets = {
     const list = I18n.lang === 'fa' ? QUOTES_FA : QUOTES_EN;
     const day = Math.floor(Date.now() / 86400000);
     q.textContent = '«' + list[day % list.length] + '»';
+  },
+
+  /* ---------- focus (pomodoro) ---------- */
+  fzState() {
+    if (!this.fz) this.fz = { left: 1500, total: 1500, run: false, mode: 'work' };
+    return this.fz;
+  },
+  renderFocus() {
+    const card = document.getElementById('w-focus');
+    if (!card) { clearInterval(this.fzTimer); return; }
+    const f = this.fzState();
+    const go = card.querySelector('#fz-go');
+    go.textContent = f.run ? I18n.t('focus_pause') : I18n.t('focus_start');
+    go.onclick = () => {
+      f.run = !f.run;
+      if (f.run && !this.fzTimer) this.fzTick();
+      this.renderFocus();
+    };
+    card.querySelector('#fz-re').onclick = () => {
+      f.left = f.total; f.run = false;
+      this.renderFocus();
+    };
+    clearInterval(this.fzTimer);
+    if (f.run) this.fzTimer = setInterval(() => this.fzTick(), 1000);
+    this.fzPaint();
+  },
+  fzTick() {
+    const f = this.fzState();
+    if (!f.run) return;
+    f.left--;
+    if (f.left <= 0) {
+      f.run = false;
+      const wasWork = f.mode === 'work';
+      f.mode = wasWork ? 'break' : 'work';
+      f.total = f.mode === 'work' ? 1500 : 300;
+      f.left = f.total;
+      showToast(wasWork ? '☕ ' + I18n.t('focus_break') : '🎯 ' + I18n.t('focus_work'), 2600);
+    }
+    this.fzPaint();
+  },
+  fzPaint() {
+    const f = this.fzState();
+    const t = document.getElementById('fz-time');
+    if (!t) return;
+    const m = Math.floor(f.left / 60), s = f.left % 60;
+    t.textContent = String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    const fg = document.getElementById('fz-fg');
+    if (fg) fg.style.strokeDashoffset = Math.round(264 * (1 - f.left / f.total));
+    const mode = document.getElementById('fz-mode');
+    if (mode) mode.textContent = f.mode === 'work' ? '🎯' : '☕';
+    const st = document.getElementById('fz-st');
+    if (st) st.textContent = f.run ? (f.mode === 'work' ? I18n.t('focus_work') : I18n.t('focus_break')) : I18n.t('focus_ready');
+    const go = document.getElementById('fz-go');
+    if (go) go.textContent = f.run ? I18n.t('focus_pause') : I18n.t('focus_start');
+  },
+
+  /* ---------- todo ---------- */
+  todos() { const s = Store.state.settings; return (s.todos || []); },
+  saveTodos(t) { Store.setSettings({ todos: t.slice(0, 8) }); },
+  renderTodo() {
+    const card = document.getElementById('w-todo');
+    if (!card) return;
+    const list = card.querySelector('#td-list');
+    const items = this.todos();
+    const cnt = card.querySelector('#td-count');
+    if (cnt) cnt.textContent = items.filter(x => !x.done).length + '/' + items.length;
+    list.innerHTML = '';
+    if (!items.length) list.innerHTML = '<div class="td-empty">' + I18n.t('todo_empty') + '</div>';
+    items.forEach((it, i) => {
+      const row = el('div', 'td-row' + (it.done ? ' done' : ''));
+      const cb = el('button', 'td-cb', it.done ? '✓' : '');
+      cb.onclick = () => { const t = this.todos(); t[i].done = !t[i].done; this.saveTodos(t); this.renderTodo(); };
+      const tx = el('span', 'td-tx', it.t.replace(/</g, '&lt;'));
+      const del = el('button', 'td-del', '×');
+      del.onclick = () => { const t = this.todos(); t.splice(i, 1); this.saveTodos(t); this.renderTodo(); };
+      row.append(cb, tx, del);
+      list.appendChild(row);
+    });
+    const inp = card.querySelector('#td-in');
+    const add = () => {
+      const v = inp.value.trim();
+      if (!v) return;
+      const t = this.todos();
+      if (t.length >= 8) { showToast(I18n.t('todo_full')); return; }
+      t.push({ t: v, done: false });
+      this.saveTodos(t);
+      inp.value = '';
+      this.renderTodo();
+    };
+    card.querySelector('#td-add').onclick = add;
+    inp.onkeydown = e => { if (e.key === 'Enter') add(); };
+    inp.placeholder = I18n.t('todo_ph');
   }
 };

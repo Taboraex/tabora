@@ -565,7 +565,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.1.8 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.1.9 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
@@ -597,7 +597,7 @@ const Panels = {
   renderWidgetToggles() {
     const box = document.getElementById('widget-toggles');
     const s = Store.state.settings;
-    const names = { weather: '🌤️ ' + I18n.t('widget_weather'), prices: '💱 ' + I18n.t('widget_prices'), bookmarks: '🔖 ' + I18n.t('widget_bookmarks'), quote: '💫 ' + I18n.t('widget_quote') };
+    const names = { weather: '🌤️ ' + I18n.t('widget_weather'), prices: '💱 ' + I18n.t('widget_prices'), bookmarks: '🔖 ' + I18n.t('widget_bookmarks'), quote: '💫 ' + I18n.t('widget_quote'), focus: '⏱️ ' + I18n.t('widget_focus'), todo: '✅ ' + I18n.t('widget_todo') };
     box.innerHTML = s.widgets.order.map(id => `
       <div class="wt-row" draggable="true" data-wid="${id}">
         <span class="wt-grip">⠿</span><span class="wt-name">${names[id] || id}</span>
