@@ -278,7 +278,10 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
   </div>
 
   <div id="v-rels" class="hide">
-    <div class="card"><h2>⏳ در انتظار تایید شما (پیش‌نویس)</h2><div id="rels-pend"></div></div>
+    <div class="grid" id="rel-stats" style="margin-bottom:14px"></div>
+    <div class="card"><h2>⏳ در انتظار تایید شما (پیش‌نویس)</h2>
+      <label class="row" style="font-size:.72rem;opacity:.85;margin-bottom:10px"><input type="checkbox" id="ann-onpub" checked style="width:auto"> بعد از تایید، اطلاعیهٔ «نسخهٔ جدید» به همهٔ کاربران اکستنشن بره 📢</label>
+      <div id="rels-pend"></div></div>
     <div class="card"><h2>✅ منتشرشده‌ها</h2><div id="rels-live"></div></div>
   </div>
 
@@ -314,9 +317,13 @@ function doLogin(){var k=document.getElementById('key').value.trim();if(!k)retur
 function logout(){sessionStorage.removeItem('tk');location.reload();}
 function enter(){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadDash();}
 function tab(id,btn){['dash','users','release','rels','ann','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='rels')loadRels();if(id==='ann')loadAnn();}
-function loadRels(){api('/admin/gh/releases').then(function(d){var pend='',live='';d.releases.forEach(function(r){var prot='';for(var i=0;i<r.assets.length;i++){if(r.assets[i].name==='tabora-protected.zip')prot=r.assets[i].url;}var acts='';if(r.draft){acts='<button class="btn sm" onclick="pubRel('+r.id+')">✅ تایید و انتشار</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑 حذف</button>';}else{acts='<span class="badge b-owner">live</span>'+(prot?' <button class="btn sm gray" onclick="pinRel(\\''+prot+'\\')">📌 دانلود</button>':'');}var card='<div style="border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+(r.name||'')+'<br><span style="font-size:.66rem;opacity:.55">'+(r.draft?'پیش‌نویس — منتظر تایید شما':('منتشرشده: '+new Date(r.published_at).toLocaleString('fa-IR')))+'</span></div><div class="row">'+acts+'</div></div></div>';if(r.draft)pend+=card;else live+=card;});document.getElementById('rels-pend').innerHTML=pend||'<p style="opacity:.5;font-size:.75rem">هیچ نسخه‌ای منتظر تایید نیست ✔</p>';document.getElementById('rels-live').innerHTML=live||'';}).catch(function(e){msg('خطا: '+e.message);});}
-function pubRel(id){if(!confirm('این نسخه منتشر و به‌عنوان latest تنظیم شود؟'))return;api('/admin/gh/publish',{id:id}).then(function(){msg('نسخه منتشر شد 🚀',true);loadRels();}).catch(function(e){msg(e.message);});}
-function delRel(id){if(!confirm('پیش‌نویس برای همیشه حذف شود؟'))return;api('/admin/gh/delete',{id:id}).then(function(){msg('حذف شد',true);loadRels();}).catch(function(e){msg(e.message);});}
+function mb(n){return (n/1048576).toFixed(1)+' MB';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
+function loadRels(){Promise.all([api('/admin/gh/releases'),api('/admin/gh/health')]).then(function(res){var d=res[0],h=res[1];var tot=0,lc=0,dc=0,pend='',live='';d.releases.forEach(function(r){var dl=0,prot='',psz=0;r.assets.forEach(function(a){dl+=a.downloads||0;if(a.name==='tabora-protected.zip'){prot=a.url;psz=a.size;}});tot+=dl;if(r.draft)dc++;else lc++;var notes=r.body?'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.68rem;opacity:.6">📝 یادداشت نسخه</summary><pre style="margin-top:6px">'+esc(r.body)+'</pre></details>':'';var acts='',card='';if(r.draft){acts='<button class="btn sm" onclick="pubRel('+r.id+',\\''+r.tag+'\\')">✅ تایید و انتشار</button> <button class="btn sm gray" onclick="editRel('+r.id+',\\''+r.tag+'\\')">✏️</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑</button>';card='<div style="border:1px solid rgba(250,204,21,.35);background:rgba(250,204,21,.06);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+esc(r.name)+'<br><span style="font-size:.66rem;opacity:.55">پیش‌نویس — '+new Date(r.created_at).toLocaleString('fa-IR')+' · '+mb(psz)+'</span>'+notes+'</div><div class="row">'+acts+'</div></div></div>';pend+=card;}else{acts='<span class="badge b-owner">live</span>'+(r.prerelease?' <span class="badge b-admin">pre</span>':'')+(prot?' <button class="btn sm gray" onclick="pinRel(\\''+prot+'\\')">📌 دانلود</button>':'')+' <button class="btn sm gray" onclick="editRel('+r.id+',\\''+r.tag+'\\')">✏️</button> <button class="btn sm gray" onclick="togglePre('+r.id+','+(!r.prerelease)+')">🏷 '+ (r.prerelease?'پیش‌انتشار: بله':'پیش‌انتشار: نه') +'</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑</button>';card='<div style="border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+esc(r.name)+'<br><span style="font-size:.66rem;opacity:.55">منتشرشده: '+new Date(r.published_at).toLocaleString('fa-IR')+' · '+mb(psz)+' · ⬇️ '+(dl||0).toLocaleString('fa-IR')+' دانلود</span>'+notes+'</div><div class="row">'+acts+'</div></div></div>';live+=card;}});document.getElementById('rel-stats').innerHTML='<div class="stat"><b>'+tot.toLocaleString('fa-IR')+'</b><span>مجموع دانلودها</span></div><div class="stat"><b>'+lc.toLocaleString('fa-IR')+'</b><span>نسخه منتشرشده</span></div><div class="stat"><b>'+dc.toLocaleString('fa-IR')+'</b><span>در انتظار تایید</span></div><div class="stat"><b>'+(h.ok?'✔':'✖')+'</b><span>سلامت لینک'+(h.ok?' '+mb(h.size):'')+'</span></div>';document.getElementById('rels-pend').innerHTML=pend||'<p style="opacity:.5;font-size:.75rem">هیچ نسخه‌ای منتظر تایید نیست ✔</p>';document.getElementById('rels-live').innerHTML=live||'';}).catch(function(e){msg('خطا: '+e.message);});}
+function pubRel(id,tag){if(!confirm('نسخه '+tag+' منتشر و به‌عنوان latest تنظیم شود؟'))return;api('/admin/gh/publish',{id:id}).then(function(){var annEl=document.getElementById('ann-onpub');var ann=annEl?annEl.checked:true;var done=function(){msg('نسخه '+tag+' منتشر شد 🚀',true);loadRels();};if(ann){api('/admin/settings',{settings:{announce_text:'🎉 نسخه '+tag+' منتشر شد! از لینک پایدار آپدیت کنید 💜',announce_level:'info'}}).then(done).catch(done);}else{done();}}).catch(function(e){msg(e.message);});}
+function editRel(id,tag){var n=prompt('نام نمایشی نسخه ('+tag+'):',tag);if(n===null)return;var b=prompt('یادداشت/توضیحات نسخه:','');if(b===null)return;api('/admin/gh/patch',{id:id,name:n,body:b}).then(function(){msg('ذخیره شد ✏️',true);loadRels();}).catch(function(e){msg(e.message);});}
+function togglePre(id,v){api('/admin/gh/patch',{id:id,prerelease:v}).then(function(){msg('تغییر کرد 🏷',true);loadRels();}).catch(function(e){msg(e.message);});}
+function delRel(id){if(!confirm('این ریلیز برای همیشه حذف شود؟'))return;api('/admin/gh/delete',{id:id}).then(function(){msg('حذف شد',true);loadRels();}).catch(function(e){msg(e.message);});}
 function pinRel(url){api('/admin/settings',{settings:{download_url:url}}).then(function(){msg('لینک دانلود روی این نسخه قفل شد 📌',true);}).catch(function(e){msg(e.message);});}
 function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});}
 var USERS=[];
@@ -468,11 +475,28 @@ async function handle(req, env) {
       if (g.status !== 200 || !Array.isArray(g.data)) return json({ error: 'github_' + g.status }, 502);
       return json({
         releases: g.data.map(r => ({
-          id: r.id, tag: r.tag_name, name: r.name, draft: !!r.draft,
-          published_at: r.published_at, created_at: r.created_at,
-          assets: (r.assets || []).map(a => ({ name: a.name, size: a.size, url: a.browser_download_url }))
+          id: r.id, tag: r.tag_name, name: r.name, draft: !!r.draft, prerelease: !!r.prerelease,
+          published_at: r.published_at, created_at: r.created_at, body: r.body || '',
+          assets: (r.assets || []).map(a => ({ name: a.name, size: a.size, url: a.browser_download_url, downloads: a.download_count || 0 }))
         }))
       });
+    }
+    if (p === '/admin/gh/patch' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      const payload = {};
+      if (typeof b.name === 'string') payload.name = b.name.slice(0, 120);
+      if (typeof b.body === 'string') payload.body = b.body.slice(0, 20000);
+      if (typeof b.prerelease === 'boolean') payload.prerelease = b.prerelease;
+      const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'PATCH', payload);
+      return json({ ok: g.status === 200, status: g.status });
+    }
+    if (p === '/admin/gh/health' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      try {
+        const r = await fetch('https://github.com/Taboraex/tabora/releases/latest/download/tabora-protected.zip', { method: 'HEAD', redirect: 'follow' });
+        return json({ ok: r.status === 200, status: r.status, size: parseInt(r.headers.get('content-length') || '0', 10) });
+      } catch (e) { return json({ ok: false, status: 0 }); }
     }
     if (p === '/admin/gh/publish' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
