@@ -9,7 +9,6 @@ const App = {
     this.applyFont();
     Widgets.renderAll();
     Social.renderDrawers();
-    Pet.init();
     this.bindUI();
     this.refreshIdentity();
     if (Store.state.token) {
