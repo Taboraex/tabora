@@ -1,8 +1,9 @@
-/* Tabora Pet v2.1 — a living companion on your new tab.
-   Stable UI: care panel is never rebuilt (bars update in place);
-   only the pet stage re-renders when its visual state changes. */
+/* Tabora Pet v3 — a roaming living companion.
+   Walks across the new tab with legs & arms, sits, hops, sleeps on the spot.
+   Stable care panel (built once, bars update in place). */
 const Pet = {
-  root: null, act: 'idle', busy: false, lastClick: 0, panelOpen: false, _key: '', _say: '',
+  root: null, walker: null, act: 'idle', pose: 'stand', face: 1, x: 200, target: null,
+  busy: false, lastClick: 0, panelOpen: false, _key: '', _say: '',
 
   species: [
     { id: 'cat', fa: 'گربهٔ شفق', en: 'Aurora Cat', c1: '#a78bfa', c2: '#7c3aed',
@@ -40,9 +41,18 @@ const Pet = {
     this.applyOffline();
     Store.onChange(() => this.refresh());
     this.dailyBonus();
+    this.x = Math.round(window.innerWidth * (0.2 + Math.random() * 0.6));
     this.refresh();
     setInterval(() => this.tick(), 5000);
     setInterval(() => this.ambient(), 9000);
+    setInterval(() => this.move(), 50);
+    window.addEventListener('resize', () => this.clampX());
+  },
+
+  clampX() {
+    const max = Math.max(20, window.innerWidth - 120);
+    this.x = Math.min(Math.max(this.x, 10), max);
+    if (this.walker) this.walker.style.left = this.x + 'px';
   },
 
   applyOffline() {
@@ -70,13 +80,13 @@ const Pet = {
     if (this.act === 'sleep') {
       st.energy = Math.min(100, st.energy + 1.1);
       st.full = Math.max(4, st.full - 0.12);
-      if (!this.nightTime() && st.energy >= 65) { this.act = 'idle'; this.say(this.L('پر انرژی! ⚡', 'Charged! ⚡')); }
+      if (!this.nightTime() && st.energy >= 65) { this.act = 'idle'; this.pose = 'stand'; this.say(this.L('پر انرژی! ⚡', 'Charged! ⚡')); }
     } else {
       st.full = Math.max(3, st.full - 0.045);
       st.energy = Math.max(3, st.energy - 0.035);
       st.clean = Math.max(5, st.clean - 0.02);
-      if (this.hour() >= 22) { this.act = 'sleep'; this.say(this.L('شب بخیر 💤', 'Night night 💤')); }
-      if (st.energy < 10 && this.act === 'idle') { this.act = 'sleep'; this.say(this.L('خوابم برد 😴', 'Dozing off 😴')); }
+      if (this.hour() >= 22) { this.act = 'sleep'; this.pose = 'sit'; this.stopWalk(); this.say(this.L('شب بخیر 💤', 'Night night 💤')); }
+      if (st.energy < 10 && this.act === 'idle') { this.act = 'sleep'; this.pose = 'sit'; this.stopWalk(); this.say(this.L('خوابم برد 😴', 'Dozing off 😴')); }
     }
     let m = (st.full + st.energy + st.clean) / 3;
     if (Math.min(st.full, st.energy, st.clean) < 20) m = Math.min(m, 25);
@@ -88,6 +98,50 @@ const Pet = {
     const s = this.st();
     const today = new Date().toDateString();
     if (s.enabled && s.lastDay !== today) this.save({ lastDay: today, xp: s.xp + 5 });
+  },
+
+  /* ---------- roaming ---------- */
+  move() {
+    if (!this.walker || this.act === 'sleep' || this.busy) return;
+    if (this.pose === 'walk') {
+      const sp = 1.7;
+      this.x += sp * this.face;
+      if (this.target !== null) {
+        if ((this.face === 1 && this.x >= this.target) || (this.face === -1 && this.x <= this.target)) {
+          this.x = this.target; this.target = null;
+          this.pose = Math.random() < 0.5 ? 'sit' : 'stand';
+          this.refresh();
+        }
+      }
+      this.clampX();
+      this.walker.style.left = this.x + 'px';
+      if (this.panelOpen) this.placePanel();
+    }
+  },
+
+  stopWalk() { this.target = null; },
+
+  wander() {
+    if (this.act === 'sleep' || this.busy) return;
+    const r = Math.random();
+    const max = Math.max(20, window.innerWidth - 120);
+    if (r < 0.6) { // stroll to a random spot
+      const t = Math.round(10 + Math.random() * max);
+      this.face = t >= this.x ? 1 : -1;
+      this.target = t;
+      this.pose = 'walk';
+      this.applyFace();
+      this.refresh();
+    } else if (r < 0.8) { this.pose = 'sit'; this.refresh(); }
+    else { // happy hop
+      const b = this.root.querySelector('#pet-bubble');
+      if (b) { b.classList.remove('jump'); void b.offsetWidth; b.classList.add('jump'); }
+    }
+  },
+
+  applyFace() {
+    const fig = this.root && this.root.querySelector('.pet-fig');
+    if (fig) fig.style.transform = 'scaleX(' + this.face + ')';
   },
 
   /* ---------- svg ---------- */
@@ -112,26 +166,35 @@ const Pet = {
     }[sp.id];
     const horns = sp.id === 'drag' ? '<circle cx="30" cy="20" r="4" fill="#fbbf24"/><circle cx="70" cy="20" r="4" fill="#fbbf24"/>' : '';
     const tail = sp.id === 'fox'
-      ? '<path class="p-tail" d="M78 66 Q96 60 92 44 Q88 56 76 58 Z" fill="' + sp.c2 + '"/>'
-      : '<path class="p-tail" d="M78 66 Q94 66 90 50" stroke="' + sp.c2 + '" stroke-width="7" fill="none" stroke-linecap="round"/>';
+      ? '<path class="p-tail" d="M78 62 Q96 56 92 40 Q88 52 76 54 Z" fill="' + sp.c2 + '"/>'
+      : '<path class="p-tail" d="M78 62 Q94 62 90 46" stroke="' + sp.c2 + '" stroke-width="7" fill="none" stroke-linecap="round"/>';
     const ink = '#1e1b31';
     let eyes;
-    if (v === 'sleep') eyes = '<path d="M36 52 q6 5 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M52 52 q6 5 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
-    else if (v === 'happy') eyes = '<path d="M36 53 q6 -7 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M52 53 q6 -7 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
-    else if (v === 'sad') eyes = '<g class="pet-eyes"><circle cx="42" cy="52" r="6" fill="#fff"/><circle cx="58" cy="52" r="6" fill="#fff"/><circle cx="43" cy="54" r="3" fill="' + ink + '"/><circle cx="59" cy="54" r="3" fill="' + ink + '"/></g><circle cx="33" cy="58" r="2.6" fill="#7dd3fc"><animate attributeName="cy" values="58;66" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.4s" repeatCount="indefinite"/></circle>';
-    else eyes = '<g class="pet-eyes"><circle cx="42" cy="52" r="6.5" fill="#fff"/><circle cx="58" cy="52" r="6.5" fill="#fff"/><circle cx="43.5" cy="53" r="3.2" fill="' + ink + '"/><circle cx="59.5" cy="53" r="3.2" fill="' + ink + '"/><circle cx="45" cy="51.5" r="1.1" fill="#fff"/><circle cx="61" cy="51.5" r="1.1" fill="#fff"/></g>';
+    if (v === 'sleep') eyes = '<path d="M36 50 q6 5 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M52 50 q6 5 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    else if (v === 'happy') eyes = '<path d="M36 51 q6 -7 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/><path d="M52 51 q6 -7 12 0" stroke="' + ink + '" stroke-width="3" fill="none" stroke-linecap="round"/>';
+    else if (v === 'sad') eyes = '<g class="pet-eyes"><circle cx="42" cy="50" r="6" fill="#fff"/><circle cx="58" cy="50" r="6" fill="#fff"/><circle cx="43" cy="52" r="3" fill="' + ink + '"/><circle cx="59" cy="52" r="3" fill="' + ink + '"/></g><circle cx="33" cy="56" r="2.6" fill="#7dd3fc"><animate attributeName="cy" values="56;64" dur="1.4s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="1.4s" repeatCount="indefinite"/></circle>';
+    else eyes = '<g class="pet-eyes"><circle cx="42" cy="50" r="6.5" fill="#fff"/><circle cx="58" cy="50" r="6.5" fill="#fff"/><circle cx="43.5" cy="51" r="3.2" fill="' + ink + '"/><circle cx="59.5" cy="51" r="3.2" fill="' + ink + '"/><circle cx="45" cy="49.5" r="1.1" fill="#fff"/><circle cx="61" cy="49.5" r="1.1" fill="#fff"/></g>';
     let mouth;
-    if (v === 'yawn') mouth = '<g class="p-yawn"><ellipse cx="50" cy="64" rx="5.5" ry="7" fill="' + ink + '"/><ellipse cx="50" cy="67" rx="3" ry="3" fill="#fb7185"/></g>';
-    else if (v === 'eat') mouth = '<g class="p-chew"><path d="M45 63 q5 5 10 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/></g>';
-    else if (v === 'sad') mouth = '<path d="M46 65 q4 -4 8 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
-    else mouth = '<path d="M46 62 q4 4 8 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
-    const dirt = v === 'dirty' ? '<circle cx="38" cy="72" r="3.4" fill="rgba(90,60,20,.5)"/><circle cx="60" cy="76" r="2.6" fill="rgba(90,60,20,.45)"/><circle cx="66" cy="44" r="2.2" fill="rgba(90,60,20,.4)"/>' : '';
+    if (v === 'yawn') mouth = '<g class="p-yawn"><ellipse cx="50" cy="62" rx="5.5" ry="7" fill="' + ink + '"/><ellipse cx="50" cy="65" rx="3" ry="3" fill="#fb7185"/></g>';
+    else if (v === 'eat') mouth = '<g class="p-chew"><path d="M45 61 q5 5 10 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/></g>';
+    else if (v === 'sad') mouth = '<path d="M46 63 q4 -4 8 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
+    else mouth = '<path d="M46 60 q4 4 8 0" stroke="' + ink + '" stroke-width="2.6" fill="none" stroke-linecap="round"/>';
+    const dirt = v === 'dirty' ? '<circle cx="38" cy="70" r="3.4" fill="rgba(90,60,20,.5)"/><circle cx="60" cy="74" r="2.6" fill="rgba(90,60,20,.45)"/><circle cx="66" cy="42" r="2.2" fill="rgba(90,60,20,.4)"/>' : '';
+    // limbs
+    const limb = sp.c2;
+    const legs = this.pose === 'sit' || this.act === 'sleep'
+      ? '<ellipse cx="40" cy="86" rx="7" ry="4.5" fill="' + limb + '"/><ellipse cx="60" cy="86" rx="7" ry="4.5" fill="' + limb + '"/>'
+      : '<g class="p-leg l"><rect x="36" y="78" width="9" height="14" rx="4.5" fill="' + limb + '"/></g><g class="p-leg r"><rect x="55" y="78" width="9" height="14" rx="4.5" fill="' + limb + '"/></g>';
+    const arms = this.act === 'sleep'
+      ? ''
+      : '<g class="p-arm l"><rect x="20" y="56" width="7" height="13" rx="3.5" fill="' + limb + '"/></g><g class="p-arm r"><rect x="73" y="56" width="7" height="13" rx="3.5" fill="' + limb + '"/></g>';
+    const bodyY = this.pose === 'sit' || this.act === 'sleep' ? 60 : 56;
     return '<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">' +
       '<defs><radialGradient id="petg" cx="38%" cy="32%"><stop offset="0%" stop-color="' + sp.c1 + '"/><stop offset="100%" stop-color="' + sp.c2 + '"/></radialGradient></defs>' +
-      '<g fill="' + sp.c2 + '" class="p-ears">' + ears + '</g>' + horns + tail +
-      '<circle cx="50" cy="58" r="30" fill="url(#petg)"/>' +
-      '<ellipse cx="50" cy="70" rx="16" ry="10" fill="rgba(255,255,255,.16)"/>' + dirt + eyes + mouth +
-      '<circle cx="33" cy="60" r="4" fill="rgba(255,150,180,.4)"/><circle cx="67" cy="60" r="4" fill="rgba(255,150,180,.4)"/>' +
+      '<g fill="' + sp.c2 + '" class="p-ears">' + ears + '</g>' + horns + tail + arms +
+      '<circle cx="50" cy="' + bodyY + '" r="30" fill="url(#petg)"/>' +
+      '<ellipse cx="50" cy="' + (bodyY + 12) + '" rx="16" ry="10" fill="rgba(255,255,255,.16)"/>' + legs + dirt + eyes + mouth +
+      '<circle cx="33" cy="' + (bodyY + 2) + '" r="4" fill="rgba(255,150,180,.4)"/><circle cx="67" cy="' + (bodyY + 2) + '" r="4" fill="rgba(255,150,180,.4)"/>' +
       '</svg>';
   },
 
@@ -139,13 +202,18 @@ const Pet = {
   refresh() {
     if (!this.root) return;
     const s = this.st();
-    if (!s.enabled) { if (this.root.innerHTML) this.root.innerHTML = ''; this._key = ''; return; }
-    if (!this.root.querySelector('#pet-stage')) this.root.innerHTML = '<div id="pet-stage"></div>';
+    if (!s.enabled) { if (this.root.innerHTML) this.root.innerHTML = ''; this._key = ''; this.walker = null; return; }
+    if (!this.root.querySelector('#pet-walker')) {
+      this.root.innerHTML = '<div id="pet-walker"><div id="pet-stage"></div></div>';
+      this.walker = this.root.querySelector('#pet-walker');
+      this.walker.style.left = this.x + 'px';
+    }
+    this.walker = this.root.querySelector('#pet-walker');
     const lv = this.level(s.xp);
-    const key = [s.species, s.name, lv, this.vis()].join('|');
+    const key = [s.species, s.name, lv, this.vis(), this.pose, this.face].join('|');
     if (key !== this._key) { this._key = key; this.renderStage(s, lv); }
     let p = this.root.querySelector('#pet-panel');
-    if (this.panelOpen) { if (!p) p = this.buildPanel(s); this.updateHUD(s, lv); }
+    if (this.panelOpen) { if (!p) p = this.buildPanel(s); this.updateHUD(s, lv); this.placePanel(); }
     else if (p) p.remove();
   },
 
@@ -158,9 +226,10 @@ const Pet = {
     const scale = 1 + Math.min(lv, 12) * 0.016;
     stage.innerHTML =
       '<div class="pet-scale" style="transform:scale(' + scale.toFixed(2) + ')">' +
-      '<div class="pet-bubble a-' + v + '" id="pet-bubble" title="' + name + '">' +
+      '<div class="pet-bubble a-' + v + ' ps-' + this.pose + '" id="pet-bubble" title="' + name + '">' +
       (this._say ? '<div class="pet-talk">' + this._say + '</div>' : '') +
-      this.svg(v) +
+      '<div class="pet-fig" style="transform:scaleX(' + this.face + ')">' + this.svg(v) + '</div>' +
+      '<div class="pet-shadow"></div>' +
       (v === 'sleep' ? '<span class="pet-zz">💤</span>' : '') +
       (v === 'dirty' ? '<span class="pet-zz stink">💨</span>' : '') +
       '<span class="pet-lv">⭐ ' + lv + '</span>' +
@@ -171,7 +240,14 @@ const Pet = {
     stage.querySelector('#pet-care').onclick = (e) => { e.stopPropagation(); this.panelOpen = !this.panelOpen; this.refresh(); };
   },
 
-  /* ---------- care panel (built once, updated in place) ---------- */
+  placePanel() {
+    const p = this.root.querySelector('#pet-panel');
+    if (!p) return;
+    const vw = window.innerWidth;
+    p.style.left = Math.min(Math.max(this.x - 60, 8), Math.max(8, vw - 262)) + 'px';
+  },
+
+  /* ---------- care panel ---------- */
   buildPanel(s) {
     const p = document.createElement('div');
     p.className = 'pet-panel';
@@ -239,7 +315,7 @@ const Pet = {
   /* ---------- actions ---------- */
   wakeGuard() {
     if (this.act === 'sleep') {
-      this.act = 'idle';
+      this.act = 'idle'; this.pose = 'stand';
       const st = this.st().stats;
       st.mood = Math.max(5, st.mood - 6);
       this.save({ stats: st });
@@ -255,6 +331,8 @@ const Pet = {
     const f = this.sp().foods[i];
     if (this.st().stats.full > 92) { this.say(this.L('سیرم 😋', 'Full 😋')); return; }
     this.busy = true;
+    this.stopWalk();
+    this.pose = 'sit';
     this.act = 'eat';
     this.say(this.L('نوم نوم 😋', 'Nom nom 😋'));
     this.refresh();
@@ -300,6 +378,7 @@ const Pet = {
     const now = Date.now();
     if (now - this.lastClick < 700) return;
     this.lastClick = now;
+    this.stopWalk();
     const b = this.root.querySelector('#pet-bubble');
     if (b) { b.classList.remove('jump'); void b.offsetWidth; b.classList.add('jump'); }
     this.float(b, ['💜', '✨', '💖'][Math.floor(Math.random() * 3)]);
@@ -313,6 +392,7 @@ const Pet = {
   bath() {
     if (this.busy || this.wakeGuard()) return;
     this.busy = true;
+    this.stopWalk();
     this.say(this.L('قلقلک! 🫧', 'Tickles! 🫧'));
     const b = this.root.querySelector('#pet-bubble');
     let n = 0;
@@ -332,7 +412,7 @@ const Pet = {
 
   toggleSleep() {
     if (this.act === 'sleep') { this.wakeGuard(); return; }
-    this.act = 'sleep';
+    this.act = 'sleep'; this.pose = 'sit'; this.stopWalk();
     this.say(this.L('شب بخیر 💤', 'Night 💤'));
     this.refresh();
   },
@@ -359,7 +439,7 @@ const Pet = {
     const st = s.stats;
     const r = Math.random();
     if (st.energy < 32 && r < 0.5) {
-      this.act = 'yawn';
+      this.act = 'yawn'; this.stopWalk();
       this.say(this.L('هـااا 🥱', 'Yawn 🥱'));
       this.refresh();
       setTimeout(() => { if (this.act === 'yawn') { this.act = 'idle'; this.refresh(); } }, 2200);
@@ -367,11 +447,8 @@ const Pet = {
     }
     if (st.full < 30 && r < 0.55) { this.say(this.L('گشنمه 🥺', 'Hungry 🥺')); return; }
     if (st.clean < 30 && r < 0.5) { this.say(this.L('حموم؟ 🛁', 'Bath? 🛁')); return; }
-    if (r < 0.4) this.say(this.sp().snd[I18n.lang === 'fa' ? 0 : 1]);
-    else if (r < 0.55) {
-      const b = this.root.querySelector('#pet-bubble');
-      if (b) { b.classList.remove('jump'); void b.offsetWidth; b.classList.add('jump'); }
-    }
+    if (r < 0.45) this.wander();
+    else if (r < 0.6) this.say(this.sp().snd[I18n.lang === 'fa' ? 0 : 1]);
   },
 
   say(t) {
