@@ -12,6 +12,7 @@ const App = {
     this.bindUI();
     this.refreshIdentity();
     if (Store.state.token) {
+      Api._pullDone = false; /* block pushes until the cloud pull lands */
       Api.pullCloud().then(() => {
         I18n.lang = Store.state.settings.lang || 'fa';
         this.applyLang(); this.applyFont();

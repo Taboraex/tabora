@@ -3,6 +3,7 @@ const API_BASE = 'https://tabora-api.nexaextensionsir-8af.workers.dev';
 
 const Api = {
   _pushTimer: null,
+  _pullDone: true,
 
   async req(path, opts = {}) {
     const headers = { 'Content-Type': 'application/json' };
@@ -19,11 +20,13 @@ const Api = {
   },
 
   async register(email, username, password, name) {
+    this._pullDone = false;
     const d = await this.req('/api/register', { body: { email, username, password, name } });
     await Store.setAuth(d.token, d.user);
     return d;
   },
   async login(identifier, password) {
+    this._pullDone = false;
     const d = await this.req('/api/login', { body: { identifier, password } });
     await Store.setAuth(d.token, d.user);
     return d.user;
@@ -44,7 +47,9 @@ const Api = {
 
   /* push local settings/bookmarks to the cloud (debounced) */
   pushCloud() {
-    if (!Store.state.token) return;
+    /* never push before the first pull completes — otherwise fresh local
+       defaults could clobber the user's cloud data */
+    if (!Store.state.token || !this._pullDone) return;
     clearTimeout(this._pushTimer);
     this._pushTimer = setTimeout(async () => {
       try {
@@ -74,6 +79,7 @@ const Api = {
       await Store.persist();
       Store.emit();
     } catch (e) { console.warn('pullCloud failed', e); }
+    this._pullDone = true;
   },
 
   users(q) { return this.req('/api/users?q=' + encodeURIComponent(q)); },
