@@ -528,6 +528,10 @@ const Panels = {
       <button class="btn" id="gen-recovery">🔐 ${I18n.t('gen_recovery')}</button>
     </div>` : ''}
     <div class="set-sec glass">
+      <div class="sec-label">🎨 ${I18n.t('set_accent')}</div>
+      <div class="ac-row" id="ac-row"></div>
+    </div>
+    <div class="set-sec glass">
       <div class="sec-label">🌐 ${I18n.t('set_language')}</div>
       <div class="seg">
         <button data-lang="fa" class="${s.lang === 'fa' ? 'active' : ''}">فارسی</button>
@@ -565,7 +569,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.1.9 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.1.10 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
@@ -585,6 +589,11 @@ const Panels = {
       try { const d = await Api.regenRecovery(); if (d && d.code) this.showCodeModal(d.code); }
       catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
     };
+    const acr = box.querySelector('#ac-row');
+    if (acr) {
+      acr.innerHTML = Object.keys(ACCENTS).map(id => '<button class="ac-dot' + ((Store.state.settings.accent || 'cyan') === id ? ' on' : '') + '" data-ac="' + id + '" style="background:' + ACCENTS[id] + '" title="' + id + '"></button>').join('');
+      acr.querySelectorAll('.ac-dot').forEach(d => d.onclick = () => { Store.setSettings({ accent: d.dataset.ac }); App.applyAccent(); this.renderSettings(); });
+    }
     box.querySelector('#set-wp').onclick = () => this.open('panel-wallpapers');
     const sy = box.querySelector('#set-sync');
     if (sy) sy.onclick = async () => { await Api.pullCloud(); Widgets.renderAll(); showToast(I18n.t('cloud_synced')); };

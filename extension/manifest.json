@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Tabora — Smart New Tab",
-  "version": "1.1.9",
+  "version": "1.1.10",
   "description": "Tabora: a beautiful smart new tab — live wallpapers, widgets, smart bookmarks, friends & chat | تبورا: نیوتب هوشمند با والپیپر متحرک، ویجت‌ها و چت",
   "icons": {
     "16": "assets/icons/icon16.png",

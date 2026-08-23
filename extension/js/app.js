@@ -1,4 +1,5 @@
 /* Tabora — boot & glue */
+const ACCENTS = { cyan: '#22d3ee', rose: '#fb7185', lime: '#a3e635', violet: '#a78bfa' };
 const App = {
   async boot() {
     await Store.load();
@@ -7,9 +8,14 @@ const App = {
     Wallpapers.apply();
     this.applyLang();
     this.applyFont();
+    this.applyAccent();
+    this.streak();
+    this.beat();
+    setInterval(() => this.beat(), 300000);
     Widgets.renderAll();
     Social.renderDrawers();
     this.bindUI();
+    this.bindXk();
     this.refreshIdentity();
     if (Store.state.token) {
       Api._pullDone = false; /* block pushes until the cloud pull lands */
@@ -30,6 +36,71 @@ const App = {
   applyFont() {
     const f = FONTS.find(x => x.id === Store.state.settings.font) || FONTS[0];
     document.body.style.fontFamily = f.css;
+  },
+  applyAccent() {
+    const id = Store.state.settings.accent || 'cyan';
+    const hex = ACCENTS[id] || ACCENTS.cyan;
+    const r = document.documentElement.style;
+    r.setProperty('--accent', hex);
+    r.setProperty('--accent-soft', hex + '2e');
+    r.setProperty('--accent-glow', hex + '55');
+  },
+  streak() {
+    const s = Store.state.settings;
+    const today = new Date().toDateString();
+    const yest = new Date(Date.now() - 86400000).toDateString();
+    let sk = s.streak || { d: '', n: 0 };
+    if (sk.d !== today) { sk = { d: today, n: sk.d === yest ? sk.n + 1 : 1 }; Store.setSettings({ streak: sk }); }
+    const b = document.getElementById('streak');
+    if (b) { b.textContent = '🔥 ' + sk.n; b.title = I18n.t('streak_tip'); }
+  },
+  beat() {
+    const s = Store.state.settings;
+    if (!s.uid) Store.setSettings({ uid: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()) });
+    fetch(API_BASE + '/api/beat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: Store.state.settings.uid }) }).catch(() => { });
+  },
+
+  /* ---------- command palette ---------- */
+  bindXk() {
+    document.addEventListener('keydown', e => {
+      if ((e.ctrlKey || e.metaKey) && String(e.key).toLowerCase() === 'k') {
+        e.preventDefault();
+        const x = document.getElementById('xk');
+        if (x.classList.contains('open')) this.xkClose(); else this.xkOpen();
+      } else if (e.key === 'Escape') this.xkClose();
+    });
+    const inp = document.getElementById('xk-in');
+    if (inp) inp.addEventListener('input', () => this.xkRender(inp.value));
+  },
+  xkCmds(q) {
+    const out = [
+      ['⚙️ ' + I18n.t('xk_settings'), () => Panels.open('panel-settings')],
+      ['🌌 ' + I18n.t('xk_wall'), () => Panels.open('panel-wallpapers')],
+      ['🌐 ' + I18n.t('xk_lang'), () => { Store.setSettings({ lang: Store.state.settings.lang === 'fa' ? 'en' : 'fa' }); this.applyLang(); }],
+      ['⏱️ ' + I18n.t('xk_focus'), () => { const f = Widgets.fzState(); f.run = !f.run; Widgets.renderFocus(); }],
+      ['🔖 ' + I18n.t('xk_bm'), () => Panels.openBookmarks()],
+      ['🎨 ' + I18n.t('xk_accent'), () => { const ids = Object.keys(ACCENTS); const cur = ids.indexOf(Store.state.settings.accent || 'cyan'); Store.setSettings({ accent: ids[(cur + 1) % ids.length] }); this.applyAccent(); }]
+    ];
+    return q ? out.filter(c => c[0].includes(q)) : out;
+  },
+  xkOpen() {
+    const x = document.getElementById('xk');
+    x.classList.add('open');
+    const inp = document.getElementById('xk-in');
+    inp.value = '';
+    this.xkRender('');
+    inp.focus();
+  },
+  xkClose() { const x = document.getElementById('xk'); if (x) x.classList.remove('open'); },
+  xkRender(q) {
+    this._xk = this.xkCmds(q);
+    const list = document.getElementById('xk-list');
+    list.innerHTML = this._xk.map((c, i) => '<div data-i="' + i + '" class="' + (i === 0 ? 'sel' : '') + '">' + c[0] + '</div>').join('');
+    list.querySelectorAll('div').forEach(d => {
+      d.onclick = () => { this._xk[parseInt(d.dataset.i, 10)][1](); this.xkClose(); };
+    });
+    const inp = document.getElementById('xk-in');
+    inp.onkeydown = e => { if (e.key === 'Enter') { const s = list.querySelector('.sel'); if (s) s.click(); } };
   },
 
   refreshIdentity() {
