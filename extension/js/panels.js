@@ -15,7 +15,6 @@ const Panels = {
     if (id === 'panel-friends') Social.renderFriendsPanel();
     if (id === 'panel-profile') this.renderProfile();
     if (id === 'panel-wallpapers') this.renderWallpapers();
-    if (id === 'panel-support') this.renderSupport();
     if (id === 'panel-settings') this.renderSettings();
   },
   closeAll() {
@@ -32,8 +31,6 @@ const Panels = {
   authMode(mode) {
     document.getElementById('auth-login').style.display = mode === 'login' ? 'block' : 'none';
     document.getElementById('auth-register').style.display = mode === 'register' ? 'block' : 'none';
-    const rec = document.getElementById('auth-recover');
-    if (rec) rec.style.display = mode === 'recover' ? 'block' : 'none';
   },
   async doLogin() {
     const idf = document.getElementById('login-id').value.trim();
@@ -52,42 +49,12 @@ const Panels = {
     const pw = document.getElementById('reg-pw').value;
     const name = document.getElementById('reg-name').value.trim();
     try {
-      const d = await Api.register(email, uname, pw, name);
-      if (d && d.recovery) this.showCodeModal(d.recovery);
+      await Api.register(email, uname, pw, name);
       await Api.pullCloud();
       showToast('🎉 ' + I18n.t('register_title'));
       this.closeAll();
       App.refreshIdentity();
     } catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
-  },
-  async doRecover() {
-    const idf = document.getElementById('rec-id').value.trim();
-    const code = document.getElementById('rec-code').value.trim();
-    const pw = document.getElementById('rec-pw').value;
-    try {
-      await Api.recover(idf, code, pw);
-      showToast(I18n.t('recovered_ok'), 4200);
-      this.authMode('login');
-      document.getElementById('login-id').value = idf;
-    } catch (e) { showToast(I18n.t('err_' + (e.code || 'generic')), 3200); }
-  },
-  showCodeModal(code) {
-    const ov = document.createElement('div');
-    ov.className = 'code-modal';
-    ov.innerHTML = `<div class="code-box">
-      <h3>${I18n.t('reg_code_title')}</h3>
-      <p class="muted">${I18n.t('reg_code_hint')}</p>
-      <div class="code-val" dir="ltr">${code}</div>
-      <div class="row-btns"><button class="btn primary" id="copy-code">${I18n.t('copy_code')}</button><button class="btn" id="close-code">✕</button></div>
-    </div>`;
-    document.body.appendChild(ov);
-    const copyTxt = () => {
-      const done = () => showToast(I18n.t('copied_code'), 2000);
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(code).then(done).catch(done);
-      else done();
-    };
-    ov.querySelector('#copy-code').onclick = copyTxt;
-    ov.querySelector('#close-code').onclick = () => ov.remove();
   },
   async doLogout() {
     await Api.logout();
@@ -155,19 +122,16 @@ const Panels = {
     if ([4,10,11,12,13,14,63,64].includes(n)) return 'fun';
     return 'anime';
   },
-  avTagEmoji(cat) { return { animals: '🐾', art: '🎨', fun: '🎲', anime: '🌸' }[cat] || '🌸'; },
 
   renderAvatarChips() {
     const chips = document.getElementById('av-chips');
     if (!chips) return;
-    const counts = { all: 71, animals: 0, anime: 0, art: 0, fun: 0 };
-    for (let i = 1; i <= 71; i++) counts[this.avatarCategoryOf('av-' + String(i).padStart(3, '0'))]++;
     const defs = [['all', 'av_all'], ['animals', 'av_animals'], ['anime', 'av_anime'], ['art', 'av_art'], ['fun', 'av_fun']];
     chips.innerHTML = '';
     defs.forEach(([id, key]) => {
       const b = document.createElement('button');
       b.className = 'ao-chip' + (this.avCat === id ? ' active' : '');
-      b.innerHTML = (id === 'all' ? '✨ ' : this.avTagEmoji(id) + ' ') + I18n.t(key) + '<b>' + counts[id] + '</b>';
+      b.textContent = id === 'all' ? '✨ ' + I18n.t(key) : I18n.t(key);
       b.onclick = () => { this.avCat = id; this.renderAvatarChips(); this.renderAvatarGrid(); };
       chips.appendChild(b);
     });
@@ -193,10 +157,6 @@ const Panels = {
       img.alt = id;
       img.onload = () => img.classList.add('ready');
       cell.appendChild(img);
-      const tag = document.createElement('span');
-      tag.className = 'av-tag';
-      tag.textContent = this.avTagEmoji(this.avatarCategoryOf(id));
-      cell.appendChild(tag);
       const check = document.createElement('span');
       check.className = 'av-check';
       check.textContent = '✓';
@@ -462,75 +422,11 @@ const Panels = {
     });
   },
 
-  /* ================= SUPPORT (Telegram bot) ================= */
-  renderSupport() {
-    const box = document.getElementById('support-body');
-    const T = k => I18n.t(k);
-    const BOT = 'NexaExtensionsbot';
-    const plane = `<svg viewBox="0 0 24 24" width="26" height="26" fill="#fff"><path d="M2.7 11.2 20.6 3.6c.9-.4 1.8.4 1.5 1.3l-3.1 14.6c-.2.9-1.2 1.2-1.9.7l-4.2-3.1-2.2 2.2c-.5.5-1.4.3-1.6-.4l-1.2-4.2-4.9-1.9c-.9-.4-.9-1.6-.3-2z"/></svg>`;
-    const chips = [
-      { ico: '🐞', label: T('sup_bug'), start: 'bug' },
-      { ico: '💡', label: T('sup_idea'), start: 'idea' },
-      { ico: '📖', label: T('sup_help'), start: 'help' },
-      { ico: '🤝', label: T('sup_biz'), start: 'biz' }
-    ];
-    let faqs = '';
-    for (let i = 1; i <= 6; i++) {
-      faqs += `<details class="faq"><summary>${T('faq_q' + i)}</summary><p>${T('faq_a' + i)}</p></details>`;
-    }
-    box.innerHTML = `
-      <div class="tg-card">
-        <div class="tg-top">
-          <div class="tg-avatar">${plane}</div>
-          <div class="tg-idbox">
-            <b>Tabora Support Bot</b>
-            <button class="tg-handle" id="sup-copy-handle" dir="ltr">@${BOT} ⧉</button>
-          </div>
-          <span class="tg-status"><i></i>${T('sup_online')}</span>
-        </div>
-        <a class="btn primary tg-open" target="_blank" rel="noreferrer" href="https://t.me/${BOT}">✈️ ${T('sup_open')}</a>
-      </div>
-      <div class="sec-label">${T('sup_quick')}</div>
-      <div class="sup-chips">
-        ${chips.map(c => `<a class="sup-chip" target="_blank" rel="noreferrer" href="https://t.me/${BOT}?start=${c.start}"><span>${c.ico}</span>${c.label}</a>`).join('')}
-      </div>
-      <button class="btn sup-diag" id="sup-diag">🩺 ${T('sup_diag')}</button>
-      <div class="sec-label">${T('sup_faq')}</div>
-      <div class="faq-list">${faqs}</div>
-      <div class="tip">💜 ${T('sup_note')}</div>`;
-    const copy = (txt, msg) => {
-      const done = () => showToast(msg, 2400);
-      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done).catch(done);
-      else { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); } catch (e) { } ta.remove(); done(); }
-    };
-    box.querySelector('#sup-copy-handle').onclick = () => copy('@' + BOT, T('sup_handle_copied'));
-    box.querySelector('#sup-diag').onclick = () => {
-      const s = Store.state, w = s.settings.wallpaper || {};
-      const u = s.user;
-      const info = [
-        'Tabora v' + (chrome.runtime && chrome.runtime.getManifest ? chrome.runtime.getManifest().version : 'preview'),
-        'lang=' + I18n.lang,
-        'wallpaper=' + w.type + (w.id ? ':' + w.id : ''),
-        'user=' + (u && u.username ? '@' + u.username : 'guest'),
-        'ua=' + navigator.userAgent
-      ].join(' | ');
-      copy(info, T('sup_diag_copied'));
-    };
-  },
-
   /* ================= SETTINGS ================= */
   renderSettings() {
     const s = Store.state.settings;
     const box = document.getElementById('settings-body');
     box.innerHTML = `
-    ${Store.state.token ? `<div class="set-sec glass">
-      <div class="sec-label">🛡️ ${I18n.t('account_sec')}</div>
-      <button class="btn" id="gen-recovery">🔐 ${I18n.t('gen_recovery')}</button>
-    </div>` : ''}
-    <div class="set-sec glass">
-      <div class="sec-label">🎨 ${I18n.t('set_accent')}</div>
-      <div class="ac-row" id="ac-row"></div>
-    </div>
     <div class="set-sec glass">
       <div class="sec-label">🌐 ${I18n.t('set_language')}</div>
       <div class="seg">
@@ -569,7 +465,7 @@ const Panels = {
     </div>
     <div class="set-sec glass about">
       <div class="sec-label">💜 ${I18n.t('about')}</div>
-      <div>${I18n.t('version')} 1.1.10 — ${I18n.t('members_legend')}</div>
+      <div>${I18n.t('version')} 1.0.5 — ${I18n.t('members_legend')}</div>
       <div class="muted">${I18n.t('made_with')}</div>
     </div>`;
 
@@ -584,16 +480,6 @@ const Panels = {
     box.querySelector('#set-clock24').onchange = (e) => { Store.setSettings({ clock24: e.target.checked }); Widgets.renderClock(); };
     box.querySelector('#set-temp').onchange = (e) => { Store.setSettings({ tempUnit: e.target.value }); Widgets.renderWeather(); };
     box.querySelector('#set-engine').onchange = (e) => Store.setSettings({ engine: e.target.value });
-    const gr = box.querySelector('#gen-recovery');
-    if (gr) gr.onclick = async () => {
-      try { const d = await Api.regenRecovery(); if (d && d.code) this.showCodeModal(d.code); }
-      catch (e) { showToast(I18n.t('err_' + (e.code || 'generic'))); }
-    };
-    const acr = box.querySelector('#ac-row');
-    if (acr) {
-      acr.innerHTML = Object.keys(ACCENTS).map(id => '<button class="ac-dot' + ((Store.state.settings.accent || 'cyan') === id ? ' on' : '') + '" data-ac="' + id + '" style="background:' + ACCENTS[id] + '" title="' + id + '"></button>').join('');
-      acr.querySelectorAll('.ac-dot').forEach(d => d.onclick = () => { Store.setSettings({ accent: d.dataset.ac }); App.applyAccent(); this.renderSettings(); });
-    }
     box.querySelector('#set-wp').onclick = () => this.open('panel-wallpapers');
     const sy = box.querySelector('#set-sync');
     if (sy) sy.onclick = async () => { await Api.pullCloud(); Widgets.renderAll(); showToast(I18n.t('cloud_synced')); };
@@ -606,7 +492,7 @@ const Panels = {
   renderWidgetToggles() {
     const box = document.getElementById('widget-toggles');
     const s = Store.state.settings;
-    const names = { weather: '🌤️ ' + I18n.t('widget_weather'), prices: '💱 ' + I18n.t('widget_prices'), bookmarks: '🔖 ' + I18n.t('widget_bookmarks'), quote: '💫 ' + I18n.t('widget_quote'), focus: '⏱️ ' + I18n.t('widget_focus'), todo: '✅ ' + I18n.t('widget_todo') };
+    const names = { weather: '🌤️ ' + I18n.t('widget_weather'), prices: '💱 ' + I18n.t('widget_prices'), bookmarks: '🔖 ' + I18n.t('widget_bookmarks'), quote: '💫 ' + I18n.t('widget_quote') };
     box.innerHTML = s.widgets.order.map(id => `
       <div class="wt-row" draggable="true" data-wid="${id}">
         <span class="wt-grip">⠿</span><span class="wt-name">${names[id] || id}</span>

@@ -179,8 +179,8 @@ body::before{content:"";position:fixed;inset:0;background:
 h2{font-size:.95rem;margin-bottom:12px;opacity:.9}
 .lbl{font-size:.72rem;opacity:.6;display:block;margin:10px 0 5px}
 input,select,textarea{width:100%;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);color:#e8ecff;border-radius:12px;padding:10px 12px;font-size:.85rem;font-family:inherit}
-input:focus,textarea:focus{outline:none;border-color:#22d3ee}
-.btn{border:none;cursor:pointer;border-radius:12px;padding:10px 16px;font-size:.82rem;font-family:inherit;color:#fff;background:linear-gradient(135deg,#22d3ee,#8b5cf6);transition:.2s}
+input:focus,textarea:focus{outline:none;border-color:var(--g1)}
+.btn{border:none;cursor:pointer;border-radius:12px;padding:10px 16px;font-size:.82rem;font-family:inherit;color:#fff;background:linear-gradient(135deg,var(--g1),var(--g2));transition:.2s}
 .btn:hover{filter:brightness(1.15)}
 .btn.gray{background:rgba(255,255,255,.1)}
 .btn.red{background:linear-gradient(135deg,#f43f5e,#b91c1c)}
@@ -188,11 +188,11 @@ input:focus,textarea:focus{outline:none;border-color:#22d3ee}
 .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
 .stat{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:14px;text-align:center}
-.stat b{font-size:1.5rem;display:block;background:linear-gradient(135deg,#22d3ee,#f472b6);-webkit-background-clip:text;background-clip:text;color:transparent}
+.stat b{font-size:1.5rem;display:block;background:linear-gradient(135deg,var(--g1),var(--g3));-webkit-background-clip:text;background-clip:text;color:transparent}
 .stat span{font-size:.7rem;opacity:.6}
 .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .tabs button{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e8ecff;border-radius:999px;padding:8px 16px;cursor:pointer;font-size:.8rem;font-family:inherit}
-.tabs button.on{background:linear-gradient(135deg,#22d3ee,#8b5cf6);border-color:transparent}
+.tabs button.on{background:linear-gradient(135deg,var(--g1),var(--g2));border-color:transparent}
 table{width:100%;border-collapse:collapse;font-size:.78rem}
 th,td{padding:9px 8px;text-align:right;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:middle}
 th{opacity:.55;font-size:.68rem}
@@ -207,8 +207,43 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
 .loginbox{max-width:380px;margin:12vh auto;text-align:center}
 .loginbox .lg{width:70px;height:70px;font-size:2rem;margin:0 auto 16px;border-radius:20px}
 .bar{height:8px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;margin:10px 0}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#22d3ee,#8b5cf6);transition:width .2s}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--g1),var(--g2));transition:width .2s}
 .hide{display:none}
+body::before,body::after{content:'';position:fixed;width:46vw;height:46vw;border-radius:50%;filter:blur(110px);opacity:.14;z-index:-1;animation:aur 14s ease-in-out infinite alternate;pointer-events:none}
+body::before{background:#7c3aed;top:-12%;left:-10%}
+body::after{background:#0891b2;bottom:-14%;right:-8%;animation-delay:-7s}
+@keyframes aur{to{transform:translate(6vw,4vh) scale(1.15)}}
+.card{transition:transform .25s,box-shadow .25s}
+.card:hover{transform:translateY(-3px);box-shadow:0 14px 40px rgba(0,0,0,.4)}
+.bar-row{display:grid;grid-template-columns:56px 1fr 34px;gap:8px;align-items:center;margin:7px 0;font-size:.7rem}
+.bar{height:9px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--g1),var(--g2));border-radius:99px;animation:grow .9s cubic-bezier(.2,.8,.3,1)}
+@keyframes grow{from{width:0}}
+.feed-row{display:flex;gap:8px;align-items:flex-start;padding:7px 4px;border-bottom:1px dashed rgba(255,255,255,.08);font-size:.72rem}
+.feed-row small{display:block;opacity:.5;font-size:.62rem;margin-top:2px}
+#cmdk{position:fixed;inset:0;background:rgba(3,5,15,.6);backdrop-filter:blur(6px);z-index:99;display:flex;justify-content:center;padding-top:12vh}
+#cmdk.hide{display:none}
+.ck-box{width:min(520px,92vw);height:max-content;background:rgba(12,15,32,.96);border:1px solid rgba(139,92,246,.4);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.6)}
+#ck-in{width:100%;background:none;border:none;outline:none;color:#fff;padding:14px 16px;font-size:.9rem;border-bottom:1px solid rgba(255,255,255,.08)}
+#ck-list div{padding:10px 16px;font-size:.78rem;cursor:pointer}
+#ck-list div:hover,#ck-list div.sel{background:rgba(139,92,246,.18)}
+.ck-hint{font-size:.6rem;opacity:.5;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:2px 7px;margin-inline-start:8px}
+:root{--g1:#22d3ee;--g2:#8b5cf6;--g3:#f472b6}
+body.th-rose{--g1:#fb7185;--g2:#e11d48;--g3:#fbbf24}
+body.th-lime{--g1:#a3e635;--g2:#059669;--g3:#22d3ee}
+body.th-violet{--g1:#a78bfa;--g2:#6d28d9;--g3:#f472b6}
+.themes{display:inline-flex;gap:6px;margin-inline-start:10px;vertical-align:middle}
+.themes button{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.25);cursor:pointer;padding:0}
+.themes button.on{border-color:#fff;transform:scale(1.2)}
+.themes .t-cyan{background:linear-gradient(135deg,#22d3ee,#8b5cf6)}
+.themes .t-rose{background:linear-gradient(135deg,#fb7185,#e11d48)}
+.themes .t-lime{background:linear-gradient(135deg,#a3e635,#059669)}
+.themes .t-violet{background:linear-gradient(135deg,#a78bfa,#6d28d9)}
+.ch-line{width:100%;height:110px}
+.ch-line .area{fill:url(#chg);opacity:.35}
+.ch-line .ln{fill:none;stroke:var(--g1);stroke-width:2.5;stroke-linecap:round}
+.ch-line .dot{fill:var(--g3)}
+.ch-line text{fill:rgba(255,255,255,.5);font-size:9px}
 </style>
 </head>
 <body>
@@ -231,7 +266,7 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
     <button class="btn gray sm out" onclick="logout()">خروج ↩</button>
   </div>
   <div class="tabs">
-    <button class="on" onclick="tab('dash',this)">📊 نمای کلی</button>
+    <button class="on" onclick="tab('dash',this)">📊 نمای کلی</button><span class="ck-hint">Ctrl+K</span><span class="themes" id="themes"></span>
     <button onclick="tab('users',this)">👥 کاربران</button>
     <button onclick="tab('release',this)"> انتشار</button>
     <button onclick="tab('rels',this)">🚀 نسخه‌ها</button>
@@ -242,6 +277,11 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
 
   <div id="v-dash">
     <div class="grid" id="stats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+      <div class="card"><h2>⬇️ دانلود به تفکیک نسخه</h2><div id="ch-dl"></div></div>
+      <div class="card"><h2>🕘 رویدادهای اخیر</h2><div id="feed" style="max-height:260px;overflow-y:auto"></div></div>
+    </div>
+    <div class="card" style="margin-top:14px"><h2>📈 روند کل دانلودها</h2><svg id="ch-line" class="ch-line" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
     <div class="card" style="margin-top:14px">
       <h2>🔗 دسترسی سریع</h2>
       <div class="row">
@@ -291,6 +331,8 @@ pre{background:rgba(0,0,0,.4);border-radius:12px;padding:12px;font-size:.7rem;ov
       <textarea id="anntxt" rows="3" placeholder="مثلاً: نسخه ۱.۰.۸ منتشر شد! از منوی پشتیبانی آپدیت کنید 💜"></textarea>
       <span class="lbl">سطح</span>
       <select id="annlvl"><option value="info">info — عادی</option><option value="warn">warn — مهم</option><option value="gold">gold — ویژه</option></select>
+      <span class="lbl">⏰ زمان‌بندی انتشار (اختیاری — خالی = همین حالا)</span>
+      <input type="datetime-local" id="annat">
       <div class="row" style="margin-top:12px">
         <button class="btn" onclick="saveAnn()">انتشار اطلاعیه 📢</button>
         <button class="btn gray" onclick="clearAnn()">حذف اطلاعیه</button>
@@ -325,7 +367,7 @@ function editRel(id,tag){var n=prompt('نام نمایشی نسخه ('+tag+'):',
 function togglePre(id,v){api('/admin/gh/patch',{id:id,prerelease:v}).then(function(){msg('تغییر کرد 🏷',true);loadRels();}).catch(function(e){msg(e.message);});}
 function delRel(id){if(!confirm('این ریلیز برای همیشه حذف شود؟'))return;api('/admin/gh/delete',{id:id}).then(function(){msg('حذف شد',true);loadRels();}).catch(function(e){msg(e.message);});}
 function pinRel(url){api('/admin/settings',{settings:{download_url:url}}).then(function(){msg('لینک دانلود روی این نسخه قفل شد 📌',true);}).catch(function(e){msg(e.message);});}
-function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});}
+function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});Promise.all([api('/admin/gh/releases'),api('/admin/logs')]).then(function(res){var rels=res[0].releases.filter(function(r){return !r.draft;}).slice(0,8);var max=1;var data=rels.map(function(r){var dl=0;r.assets.forEach(function(x){dl+=x.downloads||0;});if(dl>max)max=dl;return {tag:r.tag,dl:dl};});var html='';data.forEach(function(d){html+='<div class="bar-row"><span dir="ltr">'+d.tag+'</span><div class="bar"><i style="width:'+Math.max(4,Math.round(d.dl/max*100))+'%"></i></div><b>'+d.dl.toLocaleString('fa-IR')+'</b></div>';});document.getElementById('ch-dl').innerHTML=html||'<p style="opacity:.5;font-size:.75rem">—</p>';var icons={publish:'🚀',del:'🗑',delete:'🗑',patch:'✏️',settings:'⚙️',pin:'📌'};var fh='';res[1].logs.forEach(function(l){fh+='<div class="feed-row"><span>'+(icons[l.type]||'•')+'</span><div><b>'+esc(l.msg)+'</b><small>'+new Date(l.ts).toLocaleString('fa-IR')+'</small></div></div>';});document.getElementById('feed').innerHTML=fh||'<p style="opacity:.5;font-size:.75rem">هنوز رویدادی ثبت نشده — اولین کنش‌ها همین‌جا می‌افتن ✨</p>';}).catch(function(){});loadHist();loadTheme();}
 var USERS=[];
 function loadUsers(){api('/admin/users').then(function(d){USERS=d.users;var t=document.getElementById('utable');t.innerHTML='<tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>تاریخ</th><th>عملیات</th></tr>';USERS.forEach(function(u){var tr=document.createElement('tr');tr.innerHTML='<td><b>'+u.username+'</b><br><span style="opacity:.5;font-size:.66rem">'+u.name+'</span></td><td dir="ltr" style="text-align:right">'+u.email+'</td><td><span class="badge b-'+u.role+'">'+u.role+'</span></td><td style="font-size:.66rem;opacity:.6">'+new Date(u.created_at).toLocaleDateString('fa-IR')+'</td><td><select onchange="setRole(\\''+u.username+'\\',this.value)" style="width:auto;padding:4px 8px;font-size:.7rem"><option'+(u.role==='user'?' selected':'')+'>user</option><option'+(u.role==='admin'?' selected':'')+'>admin</option><option'+(u.role==='owner'?' selected':'')+'>owner</option></select> <button class="btn sm gray" onclick="setPass(\\''+u.username+'\\')">🔑</button> <button class="btn sm gray" onclick="viewU(\\''+u.username+'\\')">👁</button> <button class="btn sm red" onclick="delU(\\''+u.username+'\\')">🗑</button></td>';t.appendChild(tr);});});}
 function setRole(u,r){api('/admin/role',{username:u,role:r}).then(function(){msg('نقش '+u+' → '+r,true);loadUsers();}).catch(function(e){msg(e.message);});}
@@ -341,8 +383,21 @@ function saveAnn(){api('/admin/settings',{settings:{announce_text:document.getEl
 function clearAnn(){api('/admin/settings',{settings:{announce_text:null}}).then(function(){msg('اطلاعیه حذف شد',true);loadAnn();}).catch(function(e){msg(e.message);});}
 function purgeSessions(){if(!confirm('همه نشست‌ها باطل شود؟ همه کاربران باید دوباره وارد شوند.'))return;api('/admin/purge-sessions',{ }).then(function(){msg('نشست‌ها باطل شد 🔥',true);loadDash();}).catch(function(e){msg(e.message);});}
 function resetUsers(){if(!confirm('همه کاربران حذف شوند؟ این عمل غیرقابل بازگشت است!'))return;api('/admin/reset-users',{ }).then(function(){msg('همه کاربران حذف شدند ☠️',true);loadUsers();}).catch(function(e){msg(e.message);});}
+function ckOpen(){var k=document.getElementById('cmdk');k.classList.remove('hide');var inp=document.getElementById('ck-in');inp.value='';ckRender('');inp.focus();}
+function ckClose(){document.getElementById('cmdk').classList.add('hide');}
+function ckCmds(q){var tabs=['📊 نمای کلی','👥 کاربران','🛍 انتشار',' نسخه‌ها',' اطلاعیه','⚠️ منطقه خطر'];var out=[];tabs.forEach(function(t,i){out.push([t,function(){document.querySelectorAll('.tabs button')[i].click();}]);});out.push(['🔗 کپی آدرس پنل',function(){navigator.clipboard.writeText(location.href);}]);out.push(['📦 کپی لینک دانلود پایدار',function(){navigator.clipboard.writeText(location.origin+'/download');}]);out.push(['🐙 بازکردن گیت‌هاب',function(){window.open('https://github.com/Taboraex/tabora');}]);if(q)out=out.filter(function(c){return c[0].indexOf(q)>-1;});return out;}
+var CKCUR=[];function ckRender(q){CKCUR=ckCmds(q);var h='';CKCUR.slice(0,8).forEach(function(c,i){h+='<div data-i="'+i+'" class="'+(i===0?'sel':'')+'">'+c[0]+'</div>';});var list=document.getElementById('ck-list');list.innerHTML=h;for(var i=0;i<list.children.length;i++){list.children[i].onclick=function(){CKCUR[parseInt(this.getAttribute('data-i'),10)][1]();ckClose();};}}
+document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){e.preventDefault();if(document.getElementById('cmdk').classList.contains('hide'))ckOpen();else ckClose();}else if(e.key==='Escape'){ckClose();}else if(e.key==='Enter'&&!document.getElementById('cmdk').classList.contains('hide')){var sel=document.querySelector('#ck-list .sel');if(sel)sel.click();}});
+document.getElementById('ck-in').addEventListener('input',function(){ckRender(this.value);});
+function applyTheme(t){document.body.classList.remove('th-rose','th-lime','th-violet');if(t&&t!=='cyan')document.body.classList.add('th-'+t);var box=document.getElementById('themes');if(box){box.innerHTML=['cyan','rose','lime','violet'].map(function(x){return '<button class="t-'+x+(x===(t||'cyan')?' on':'')+'" onclick="setTheme(\\''+x+'\\')" title="'+x+'"></button>';}).join('');}}
+function setTheme(t){api('/admin/settings',{settings:{theme:t==='cyan'?null:t}}).then(function(){applyTheme(t);}).catch(function(e){msg(e.message);});}
+function loadTheme(){api('/admin/settings').then(function(s){applyTheme(s.settings.theme||'cyan');}).catch(function(){});}
+function loadHist(){api('/admin/history').then(function(d){var h=d.hist||[];var svg=document.getElementById('ch-line');if(!svg)return;if(h.length<2){svg.outerHTML='<p style="opacity:.5;font-size:.75rem">دادهٔ کافی نیست — هر روز یه نقطه اضافه می‌شه 📈</p>';return;}var max=Math.max.apply(null,h.map(function(x){return x.total;}));var min=Math.min.apply(null,h.map(function(x){return x.total;}));var W=300,H=90,P=10;var pts=h.map(function(x,i){var px=P+i*(W-2*P)/(h.length-1);var py=H-P-((x.total-min)/((max-min)||1))*(H-2*P);return [px,py];});var line=pts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' ');var area=line+' L'+pts[pts.length-1][0].toFixed(1)+' '+H+' L'+pts[0][0].toFixed(1)+' '+H+' Z';var dots=pts.map(function(p){return '<circle class="dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.6"/>';}).join('');svg.innerHTML='<defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--g1)"/><stop offset="1" stop-color="transparent"/></linearGradient></defs><path class="area" d="'+area+'"/><path class="ln" d="'+line+'"/>'+dots+'<text x="'+P+'" y="'+(H-1)+'">'+h[0].day.slice(5)+'</text><text x="'+(W-P)+'" y="'+(H-1)+'" text-anchor="end">'+h[h.length-1].day.slice(5)+' · '+h[h.length-1].total.toLocaleString('fa-IR')+' ⬇</text>';}).catch(function(){});}
+function loadAnn(){api('/admin/settings').then(function(s){document.getElementById('anntxt').value=s.settings.announce_text||'';document.getElementById('annlvl').value=s.settings.announce_level||'info';var at=document.getElementById('annat');if(at){at.value=s.settings.announce_at?new Date(parseInt(s.settings.announce_at,10)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';}});}
+function saveAnn(){var at=document.getElementById('annat').value;var ms=at?new Date(at).getTime():0;api('/admin/settings',{settings:{announce_text:document.getElementById('anntxt').value.trim()||null,announce_level:document.getElementById('annlvl').value,announce_at:ms>Date.now()?ms:null}}).then(function(){msg(ms>Date.now()?'اطلاعیه زمان‌بندی شد ⏰':'اطلاعیه منتشر شد 📢',true);}).catch(function(e){msg(e.message);});}
 if(K()){api('/admin/stats').then(enter).catch(function(){});}
 </script>
+<div id="cmdk" class="hide"><div class="ck-box"><input id="ck-in" placeholder="🔍 دستور یا بخش... (Esc = بستن)"><div id="ck-list"></div></div></div>
 </body>
 </html>`;
 
@@ -428,13 +483,37 @@ async function handle(req, env) {
       return json({ ok: true });
     }
 
+    if (p === '/admin/logs' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      await db.prepare('CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, type TEXT, msg TEXT)').run();
+      const rows = await db.prepare('SELECT * FROM logs ORDER BY id DESC LIMIT 30').all();
+      return json({ logs: rows.results || [] });
+    }
+    if (p === '/admin/history' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      await db.prepare('CREATE TABLE IF NOT EXISTS hist(day TEXT PRIMARY KEY, total INTEGER)').run();
+      try {
+        const g = await ghFetch(env, '', 'GET');
+        if (g.status === 200) {
+          const rels = await g.json();
+          let tot = 0;
+          rels.forEach(r => (r.assets || []).forEach(x => { tot += x.download_count || 0; }));
+          const day = new Date().toISOString().slice(0, 10);
+          await db.prepare('INSERT INTO hist(day,total) VALUES(?,?) ON CONFLICT(day) DO UPDATE SET total=excluded.total').bind(day, tot).run();
+        }
+      } catch (e) { }
+      const hr = await db.prepare('SELECT day,total FROM hist ORDER BY day DESC LIMIT 30').all();
+      return json({ hist: (hr.results || []).reverse() });
+    }
     if (p === '/admin/stats' && req.method === 'GET') {
       if (!hasKey) return err('forbidden', 403);
       const users = await db.prepare('SELECT COUNT(*) AS c FROM users').first();
       const staff = await db.prepare("SELECT COUNT(*) AS c FROM users WHERE role IN ('owner','admin')").first();
       const sess = await db.prepare('SELECT COUNT(*) AS c FROM sessions WHERE expires > ?').bind(Date.now()).first();
       const files = await db.prepare("SELECT COUNT(*) AS c, MAX(name) AS n FROM files WHERE key='latest'").first();
-      return json({ users: users.c, staff: staff.c, sessions: sess.c, d1_file: files.n || null, time: Date.now() });
+      await db.prepare('CREATE TABLE IF NOT EXISTS beats(uid TEXT PRIMARY KEY, last INTEGER)').run();
+      const dau = await db.prepare('SELECT COUNT(*) AS c FROM beats WHERE last > ?').bind(Date.now() - 86400000).first();
+      return json({ users: users.c, staff: staff.c, sessions: sess.c, d1_file: files.n || null, dau: dau.c, time: Date.now() });
     }
 
     if (p === '/admin/users' && req.method === 'GET') {
@@ -489,6 +568,7 @@ async function handle(req, env) {
       if (typeof b.body === 'string') payload.body = b.body.slice(0, 20000);
       if (typeof b.prerelease === 'boolean') payload.prerelease = b.prerelease;
       const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'PATCH', payload);
+      if (g.status === 200) await log(db, 'patch', 'edit release #' + b.id);
       return json({ ok: g.status === 200, status: g.status });
     }
     if (p === '/admin/gh/health' && req.method === 'GET') {
@@ -502,12 +582,14 @@ async function handle(req, env) {
       if (!hasKey) return err('forbidden', 403);
       const b = await body(req);
       const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'PATCH', { draft: false, make_latest: 'true' });
+      if (g.status === 200) await log(db, 'publish', 'publish release #' + b.id);
       return json({ ok: g.status === 200, status: g.status });
     }
     if (p === '/admin/gh/delete' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
       const b = await body(req);
       const g = await ghFetch(env, '/' + parseInt(b.id, 10), 'DELETE');
+      if (g.status === 204 || g.status === 200) await log(db, 'delete', 'delete release #' + b.id);
       return json({ ok: g.status === 204 || g.status === 200, status: g.status });
     }
 
@@ -529,6 +611,7 @@ async function handle(req, env) {
         }
       }
       await kvSet(db, 'settings', JSON.stringify(s));
+      await log(db, 'settings', 'panel settings changed');
       return json({ ok: true, settings: s });
     }
 
@@ -545,9 +628,20 @@ async function handle(req, env) {
     if (p === '/api/prices') return json(await getPrices());
 
     /* ---------- public announcement (set from admin panel) ---------- */
+    if (p === '/api/beat' && req.method === 'POST') {
+      const b = await body(req);
+      const uid = String(b.uid || '').slice(0, 64);
+      if (uid) {
+        await db.prepare('CREATE TABLE IF NOT EXISTS beats(uid TEXT PRIMARY KEY, last INTEGER)').run();
+        await db.prepare('INSERT INTO beats(uid,last) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET last=excluded.last').bind(uid, Date.now()).run();
+      }
+      return json({ ok: true });
+    }
     if (p === '/api/announce') {
       let s = {};
       try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      const at = parseInt(s.announce_at || 0, 10);
+      if (at && Date.now() < at) return json({ text: '', level: 'info' });
       return json({ text: String(s.announce_text || ''), level: String(s.announce_level || 'info') });
     }
 
