@@ -385,7 +385,9 @@ async function handle(req, env) {
 
     /* ---------- internal admin (key-gated) ---------- */
     const adminKey = env.ADMIN_KEY || '';
-    const hasKey = adminKey && req.headers.get('x-admin-key') === adminKey;
+    const panelPass = env.PANEL_PASS || '';
+    const sentKey = req.headers.get('x-admin-key') || '';
+    const hasKey = sentKey && ((adminKey && sentKey === adminKey) || (panelPass && sentKey === panelPass));
 
     if (p === '/admin/migrate' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
