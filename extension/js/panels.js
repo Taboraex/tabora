@@ -21,6 +21,7 @@ const Panels = {
     if (id === 'panel-wallpapers') this.renderWallpapers();
     if (id === 'panel-support') this.renderSupport();
     if (id === 'panel-settings') this.renderSettings();
+    if (id === 'panel-events') this.renderEventsManager();
   },
   closeAll() {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
@@ -538,6 +539,103 @@ const Panels = {
         Store.setBookmarks(marks);
         Widgets.renderBookmarks();
         this.renderBookmarksManager();
+      };
+    });
+  },
+
+  /* ================= PERSONAL EVENTS (Jalali) ================= */
+  openEvents() {
+    const j = Jalali.today();
+    if (!this.evYear) { this.evYear = j.jy; this.evMonth = j.jm; this.evDay = j.jd; }
+    this.open('panel-events');
+    this.renderEventsManager();
+  },
+  evSortTs(e) {
+    const p = String(e.d).split('/').map(Number);
+    return Jalali.toGregorian(p[0], p[1], p[2]).getTime();
+  },
+  renderEventsManager() {
+    const box = document.getElementById('events-body');
+    if (!box) return;
+    const fa = I18n.lang === 'fa';
+    const months = fa ? Jalali.MONTHS_FA : Jalali.MONTHS_EN;
+    const days = fa ? ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'] : ['S', 'S', 'M', 'T', 'W', 'T', 'F'];
+    const y = this.evYear, m = this.evMonth;
+    const len = Jalali.monthLength(y, m);
+    const firstIdx = Jalali.weekIndexOf(y, m, 1);
+    const today = Jalali.today();
+    const todayKey = Jalali.key(today.jy, today.jm, today.jd);
+    let grid = '';
+    for (let i = 0; i < firstIdx; i++) grid += '<span class="ev-blank"></span>';
+    for (let dd = 1; dd <= len; dd++) {
+      const k = Jalali.key(y, m, dd);
+      const cls = ['ev-day'];
+      if (k === todayKey) cls.push('today');
+      if (this.evDay === dd && this.evMonth === m && this.evYear === y) cls.push('sel');
+      const hasEv = Widgets.myEvents().some(e => e.d === k);
+      grid += `<button class="${cls.join(' ')}" data-d="${dd}">${fa ? Jalali.toFaDigits(dd) : dd}${hasEv ? '<i></i>' : ''}</button>`;
+    }
+    const events = Widgets.myEvents().slice().sort((a, b) => this.evSortTs(a) - this.evSortTs(b));
+    const nowTs = Date.now();
+    box.innerHTML = `
+      <div class="ev-picker glass">
+        <div class="ev-head">
+          <button class="icon-btn" id="ev-prev">›</button>
+          <b>${months[m - 1]} ${fa ? Jalali.toFaDigits(y) : y}</b>
+          <button class="icon-btn" id="ev-next">‹</button>
+        </div>
+        <div class="ev-week">${days.map(x => '<span>' + x + '</span>').join('')}</div>
+        <div class="ev-grid">${grid}</div>
+      </div>
+      <div class="ev-form glass">
+        <input id="ev-title" maxlength="60" data-i18n-ph="ev_title_ph" placeholder="${I18n.t('ev_title_ph')}">
+        <button class="btn primary" id="ev-save">${I18n.t('ev_save')}</button>
+      </div>
+      <div class="sec-label">📌 ${I18n.t('widget_events')} (${events.length})</div>
+      <div class="ev-list">${events.map((e, i) => {
+        const p = String(e.d).split('/').map(Number);
+        const past = this.evSortTs(e) < nowTs - 86400000;
+        return `<div class="ev-row ${past ? 'past' : ''}">
+          <span class="ev-date">${Jalali.fmt(Jalali.toGregorian(p[0], p[1], p[2]))}${past ? ' · ' + I18n.t('ev_past') : ''}</span>
+          <b class="ev-name">${String(e.t).replace(/</g, '&lt;')}</b>
+          <button class="btn small danger" data-i="${i}">✕</button>
+        </div>`;
+      }).join('') || `<div class="muted pad">${I18n.t('ev_empty')}</div>`}</div>`;
+    box.querySelector('#ev-prev').onclick = () => {
+      this.evMonth--; if (this.evMonth < 1) { this.evMonth = 12; this.evYear--; }
+      this.evDay = Math.min(this.evDay, Jalali.monthLength(this.evYear, this.evMonth));
+      this.renderEventsManager();
+    };
+    box.querySelector('#ev-next').onclick = () => {
+      this.evMonth++; if (this.evMonth > 12) { this.evMonth = 1; this.evYear++; }
+      this.evDay = Math.min(this.evDay, Jalali.monthLength(this.evYear, this.evMonth));
+      this.renderEventsManager();
+    };
+    box.querySelectorAll('.ev-day').forEach(b => {
+      b.onclick = () => { this.evDay = +b.dataset.d; this.renderEventsManager(); };
+    });
+    box.querySelector('#ev-save').onclick = () => {
+      const t = box.querySelector('#ev-title').value.trim();
+      if (!t) return;
+      const list = Widgets.myEvents();
+      if (list.length >= 30) { showToast(I18n.t('ev_full')); return; }
+      const k = Jalali.key(this.evYear, this.evMonth, this.evDay);
+      if (list.some(e => e.d === k && e.t === t)) { showToast('✔'); return; }
+      list.push({ t, d: k, c: Date.now() });
+      Store.setSettings({ events: list });
+      showToast(I18n.t('ev_added'), 2000);
+      box.querySelector('#ev-title').value = '';
+      Widgets.renderCalendar();
+      this.renderEventsManager();
+    };
+    box.querySelectorAll('.ev-row button[data-i]').forEach(b => {
+      b.onclick = () => {
+        const sorted = Widgets.myEvents().slice().sort((a, b2) => this.evSortTs(a) - this.evSortTs(b2));
+        const victim = sorted[+b.dataset.i];
+        Store.setSettings({ events: Widgets.myEvents().filter(e => e !== victim && !(e.d === victim.d && e.t === victim.t && e.c === victim.c)) });
+        showToast(I18n.t('ev_deleted'), 1800);
+        Widgets.renderCalendar();
+        this.renderEventsManager();
       };
     });
   },

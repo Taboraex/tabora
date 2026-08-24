@@ -129,7 +129,19 @@ const Widgets = {
       const w = this.build(id);
       if (w) { w.classList.add('w-in'); w.style.animationDelay = (i++ * 80) + 'ms'; row.appendChild(w); }
     });
-    row.style.transform = `scale(${s.scale || 1})`;
+    row.style.setProperty('--wn', row.children.length || 7);
+    this.fitRow();
+    if (!this._fitBound) {
+      this._fitBound = true;
+      addEventListener('resize', () => this.fitRow());
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => this.fitRow()).catch(() => {});
+      new ResizeObserver(() => this.fitRow()).observe(row);   /* refit when async content (weather/prices) changes row height */
+      row.addEventListener('wheel', e => {
+        if (row.scrollWidth <= row.clientWidth + 2) return;
+        const rtl = getComputedStyle(row).direction === 'rtl';
+        row.scrollLeft += (rtl ? -1 : 1) * (e.deltaY || e.deltaX);
+      }, { passive: true });
+    }
     if (!this._spot) {
       this._spot = true;
       row.addEventListener('mousemove', e => {
@@ -150,17 +162,34 @@ const Widgets = {
     if (window.I18n) I18n.applyLang(I18n.lang);
   },
 
+  /* keep widgets docked at the bottom: always one row — fluid width, scroll only if screen is too narrow */
+  fitRow() {
+    const row = document.getElementById('widgets-row');
+    if (!row || !row.children.length) return;
+    const avail = row.clientWidth, need = row.scrollWidth;
+    const sb = document.querySelector('.searchbar');
+    const sbBottom = sb ? sb.getBoundingClientRect().bottom : innerHeight * .45;
+    const roomH = innerHeight - 120 - sbBottom;               /* 108 dock offset + breathing room */
+    let sc = Store.state.settings.scale || 1;
+    sc = need > avail + 2 ? Math.min(sc, 1) : Math.min(sc, (avail + 2) / need);
+    if (row.offsetHeight > roomH) sc = Math.min(sc, Math.max(.8, roomH / row.offsetHeight));
+    row.style.transform = `scale(${sc})`;
+    row.classList.toggle('of', need * sc > avail + 2);
+  },
+
   build(id) {
     const card = el('div', 'widget glass', null);
     card.dataset.wid = id;
     card.draggable = false;
     if (id === 'calendar') {
       card.id = 'w-calendar';
-      card.innerHTML = `<div class="w-title"><span>🗓️</span><b data-i18n="widget_calendar"></b><span class="w-badge" id="cal-off-badge"></span></div>
+      card.innerHTML = `<div class="w-title"><span>🗓️</span><b data-i18n="widget_calendar"></b><span class="w-badge" id="cal-off-badge"></span><button class="bm-add" title="${I18n.t('widget_events')}">+</button></div>
         <div class="cal-main"><div class="cal-day" id="cal-day">--</div>
           <div class="cal-side"><b id="cal-month"></b><span id="cal-greg" class="muted"></span></div></div>
         <div class="cal-ev" id="cal-ev"></div>
+        <div class="cal-my" id="cal-my"></div>
         <div class="cal-next" id="cal-next"></div>`;
+      card.querySelector('.bm-add').onclick = () => Panels.openEvents();
     } else if (id === 'weather') {
       card.id = 'w-weather';
       card.innerHTML = `<div class="w-title"><span>🌤️</span><b data-i18n="widget_weather"></b></div><div class="wx-scene"></div><div class="wx-body"><div class="wx-temp">--°</div><div class="wx-meta"></div></div>`;
@@ -211,14 +240,33 @@ const Widgets = {
       badge.textContent = '';
       evBox.innerHTML = '<span class="cal-ev-name muted">' + I18n.t('cal_none') + '</span>';
     }
-    const next = Jalali.nextHolidays(3);
-    card.querySelector('#cal-next').innerHTML = next.length
-      ? '<div class="cal-next-title">' + I18n.t('cal_upcoming') + '</div>' + next.map(h => {
-        const hj = h.j;
-        return '<div class="cal-next-row"><span class="cal-next-date">' + Jalali.fmt(h.date) + '</span><span class="cal-next-name">' + h.name + '</span></div>';
-      }).join('')
+    /* today's personal events */
+    const tkey = Jalali.key(j.jy, j.jm, j.jd);
+    const myToday = this.myEvents().filter(e => e.d === tkey);
+    card.querySelector('#cal-my').innerHTML = myToday.length
+      ? '<div class="cal-next-title">' + I18n.t('ev_today') + '</div>' +
+        myToday.map(e => '<div class="cal-next-row my"><span class="cal-next-name">📌 ' + String(e.t).replace(/</g, '&lt;') + '</span></div>').join('')
+      : '';
+    /* upcoming: merge official holidays + personal events (next 45 days) */
+    const upcoming = [];
+    let d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const my = this.myEvents();
+    for (let i = 0; i < 45 && upcoming.length < 4; i++) {
+      const hj = Jalali.toJalali(d);
+      const k = Jalali.key(hj.jy, hj.jm, hj.jd);
+      const off = Jalali.eventOf(hj.jy, hj.jm, hj.jd);
+      if (off && off.off) upcoming.push({ date: new Date(d), name: off.name, kind: 'off' });
+      my.filter(e => e.d === k).forEach(e => upcoming.push({ date: new Date(d), name: e.t, kind: 'my' }));
+      d = new Date(d.getTime() + 86400000);
+    }
+    card.querySelector('#cal-next').innerHTML = upcoming.length
+      ? '<div class="cal-next-title">' + I18n.t('cal_upcoming') + '</div>' + upcoming.slice(0, 4).map(u =>
+          '<div class="cal-next-row"><span class="cal-next-date">' + Jalali.fmt(u.date) + '</span><span class="cal-next-name">' +
+          (u.kind === 'off' ? '🔴 ' : '📌 ') + String(u.name).replace(/</g, '&lt;') + '</span></div>').join('')
       : '';
   },
+
+  myEvents() { return Store.state.settings.events || []; },
 
   /* ---------- clock ---------- */
   renderClock() {

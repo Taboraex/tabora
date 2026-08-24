@@ -114,6 +114,23 @@ const Jalali = {
     const j = Jalali.toJalali(now);
     return j;
   },
+  isLeap(jy) { return Jalali.jalCal(jy).leap === 0; },
+  monthLength(jy, jm) {
+    if (jm <= 6) return 31;
+    if (jm <= 11) return 30;
+    return Jalali.isLeap(jy) ? 30 : 29;
+  },
+  toGregorian(jy, jm, jd) {
+    const g = Jalali.d2g(Jalali.j2d(jy, jm, jd));
+    return new Date(g.gy, g.gm - 1, g.gd);
+  },
+  /* 0=Saturday … 6=Friday (Iranian week) */
+  weekIndexOf(jy, jm, jd) {
+    const g = Jalali.toGregorian(jy, jm, jd);
+    const map = [1, 2, 3, 4, 5, 6, 0]; /* Sun..Sat */
+    return map[g.getDay()];
+  },
+  key(jy, jm, jd) { return jy + '/' + jm + '/' + jd; },
   eventOf(jy, jm, jd) {
     const y = Jalali.HOLIDAYS[jy];
     if (!y) return null;

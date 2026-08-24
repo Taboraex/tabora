@@ -117,10 +117,22 @@ input, textarea, select { font-family: inherit; }
   display: flex; justify-content: center; padding: 0 24px;
 }
 #widgets-row {
-  display: flex; gap: 16px; align-items: stretch; flex-wrap: wrap; justify-content: center;
+  display: flex; gap: 16px; align-items: stretch; flex-wrap: nowrap; justify-content: center;
   transform-origin: bottom center; transition: transform .25s;
+  max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+  scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 4px;
 }
-.widget { width: 288px; min-height: 148px; padding: 16px 18px; transition: transform .2s, border-color .2s; position: relative; }
+#widgets-row::-webkit-scrollbar { display: none; }
+#widgets-row.of { justify-content: flex-start; }
+#widgets-row.of {
+  -webkit-mask-image: linear-gradient(to left, transparent 0, #000 28px calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to left, transparent 0, #000 28px calc(100% - 28px), transparent 100%);
+}
+.widget {
+  width: clamp(196px, calc((100vw - 56px - (var(--wn, 7) - 1) * 16px) / var(--wn, 7)), 300px);
+  flex: 0 0 auto; min-height: 148px; padding: 16px 18px; transition: transform .2s, border-color .2s; position: relative;
+  overflow: hidden;
+}
 .w-in { animation: w-in .5s cubic-bezier(.2,.9,.3,1.2) both; }
 @keyframes w-in { from { opacity: 0; transform: translateY(16px) scale(.95); } }
 .widget::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(240px circle at var(--mx,50%) var(--my,50%), rgba(139,92,246,.16), transparent 65%); opacity: 0; transition: opacity .3s; pointer-events: none; }
@@ -554,8 +566,13 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 
 /* responsive */
 @media (max-width: 900px) {
-  .widget { width: 100%; max-width: 420px; }
-  #widgets-wrap { bottom: 96px; }
+  #widgets-wrap { bottom: 96px; padding: 0 14px; }
+}
+/* short screens (laptops): lift the clock so widgets never collide with it */
+@media (max-height: 820px) {
+  #center { top: 4vh; }
+  .clock { font-size: clamp(3.4rem, 10vw, 6.5rem); }
+  .searchbar { margin-top: 16px; padding: 12px 20px; }
 }
 
 /* ===== support panel (Telegram bot) ===== */
@@ -662,3 +679,30 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 .wp-card { position: relative; }
 .wp-heart:hover { transform: scale(1.15); color: #fb7185; }
 .wp-heart.on { color: #fb7185; background: rgba(251,113,133,.18); box-shadow: 0 0 12px rgba(251,113,133,.4); }
+
+/* ============ announce download link ============ */
+.ann-link { text-decoration: none; white-space: nowrap; flex-shrink: 0; }
+
+/* ============ personal events (Jalali picker) ============ */
+.cal-my { margin: 6px 0 2px; }
+.cal-next-row.my { justify-content: flex-start; }
+.ev-picker { padding: 14px 16px; margin-bottom: 12px; }
+.ev-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.ev-head b { font-size: .95rem; }
+.ev-head .icon-btn { font-size: 1rem; opacity: .7; }
+.ev-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: 4px; }
+.ev-week span { text-align: center; font-size: .62rem; opacity: .5; }
+.ev-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.ev-day { position: relative; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03); color: var(--text); border-radius: 8px; padding: 7px 0; font-size: .76rem; cursor: pointer; font-family: inherit; transition: .15s; }
+.ev-day:hover { border-color: var(--accent-glow); }
+.ev-day.today { border-color: var(--accent); font-weight: 700; }
+.ev-day.sel { background: var(--accent); color: #08111f; font-weight: 800; border-color: var(--accent); }
+.ev-day i { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #f472b6; }
+.ev-blank { visibility: hidden; }
+.ev-form { display: flex; gap: 8px; padding: 12px; margin-bottom: 14px; }
+.ev-form input { flex: 1; }
+.ev-list { display: flex; flex-direction: column; gap: 8px; }
+.ev-row { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); border-radius: 12px; padding: 10px 14px; }
+.ev-row .ev-date { font-size: .68rem; color: var(--accent); white-space: nowrap; min-width: 96px; }
+.ev-row .ev-name { flex: 1; font-size: .84rem; font-weight: 500; }
+.ev-row.past { opacity: .45; }

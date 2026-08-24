@@ -127,6 +127,7 @@ const App = {
       ['🌐 ' + I18n.t('xk_lang'), () => { Store.setSettings({ lang: Store.state.settings.lang === 'fa' ? 'en' : 'fa' }); this.applyLang(); }],
       ['⏱️ ' + I18n.t('xk_focus'), () => { const f = Widgets.fzState(); f.run = !f.run; Widgets.renderFocus(); }],
       ['🔖 ' + I18n.t('xk_bm'), () => Panels.openBookmarks()],
+      ['📅 ' + I18n.t('xk_events'), () => Panels.openEvents()],
       ['🎨 ' + I18n.t('xk_accent'), () => { const ids = Object.keys(ACCENTS); const cur = ids.indexOf(Store.state.settings.accent || 'cyan'); Store.setSettings({ accent: ids[(cur + 1) % ids.length] }); this.applyAccent(); }]
     ];
     return q ? out.filter(c => c[0].includes(q)) : out;
@@ -219,9 +220,17 @@ const App = {
           const b = document.createElement('div');
           b.className = 'announce ' + (d.level || 'info');
           const s = document.createElement('span'); s.textContent = d.text;
+          b.appendChild(s);
+          if (d.link) {
+            const a = document.createElement('a');
+            a.className = 'btn primary sm ann-link';
+            a.href = d.link; a.target = '_blank'; a.rel = 'noopener';
+            a.textContent = '⬇️ ' + I18n.t('upd_dl').replace('⬇️', '').trim();
+            b.appendChild(a);
+          }
           const x = document.createElement('button'); x.className = 'ann-x'; x.textContent = '✕';
           x.onclick = () => b.remove();
-          b.append(s, x);
+          b.appendChild(x);
           document.body.prepend(b);
         }
       } catch (e) { /* offline */ }
