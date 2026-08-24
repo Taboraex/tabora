@@ -627,3 +627,38 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 #xk-in { width: 100%; background: none; border: none; outline: none; color: var(--text); padding: 15px 18px; font-size: .92rem; border-bottom: 1px solid var(--glass-border); font-family: inherit; }
 #xk-list div { padding: 11px 18px; font-size: .8rem; cursor: pointer; }
 #xk-list div:hover, #xk-list div.sel { background: var(--accent-soft); }
+
+/* ============ calendar widget ============ */
+.cal-main { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.cal-day { font-size: 2.9rem; font-weight: 900; line-height: 1; background: linear-gradient(135deg, var(--accent), #f472b6); -webkit-background-clip: text; background-clip: text; color: transparent; min-width: 62px; text-align: center; }
+.cal-side { display: flex; flex-direction: column; gap: 3px; }
+.cal-side b { font-size: 1rem; }
+.cal-side .muted { font-size: .68rem; opacity: .65; }
+.cal-ev { margin-bottom: 8px; }
+.cal-ev-name { font-size: .78rem; padding: 4px 10px; border-radius: 9px; display: inline-block; }
+.cal-ev-name.off { background: rgba(244,63,94,.16); color: #fda4af; border: 1px solid rgba(244,63,94,.35); font-weight: 600; }
+.cal-ev-name.muted { opacity: .55; font-size: .72rem; }
+.cal-next { border-top: 1px dashed rgba(255,255,255,.1); padding-top: 8px; }
+.cal-next-title { font-size: .66rem; opacity: .55; margin-bottom: 5px; }
+.cal-next-row { display: flex; justify-content: space-between; gap: 8px; font-size: .7rem; padding: 2.5px 0; }
+.cal-next-date { color: var(--accent); font-weight: 600; white-space: nowrap; }
+.cal-next-name { opacity: .75; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+
+/* ============ update banner buttons ============ */
+.upd-banner { gap: 12px; }
+.upd-banner .btn { white-space: nowrap; }
+.upd-dl { text-decoration: none; }
+
+/* ============ wallpaper favorites & rotation ============ */
+.wp-rot-row { display: flex; gap: 10px; align-items: center; }
+.wp-rot-row select { flex: 1; }
+.wp-favs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+.fav-chip { display: inline-flex; align-items: center; border-radius: 999px; overflow: hidden; border: 1px solid var(--accent-glow); background: var(--accent-soft); font-size: .74rem; }
+.fav-chip .fav-apply { border: none; background: none; color: var(--text); cursor: pointer; padding: 6px 4px 6px 12px; font-family: inherit; font-size: .74rem; }
+.fav-chip .fav-apply:hover { color: var(--accent); }
+.fav-chip .fav-x { border: none; background: rgba(255,255,255,.08); color: var(--muted); cursor: pointer; padding: 6px 10px; font-size: .68rem; }
+.fav-chip .fav-x:hover { background: rgba(244,63,94,.3); color: #fff; }
+.wp-heart { position: absolute; top: 7px; left: 7px; z-index: 2; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: .9rem; background: rgba(0,0,0,.45); color: rgba(255,255,255,.55); backdrop-filter: blur(4px); transition: .2s; }
+.wp-card { position: relative; }
+.wp-heart:hover { transform: scale(1.15); color: #fb7185; }
+.wp-heart.on { color: #fb7185; background: rgba(251,113,133,.18); box-shadow: 0 0 12px rgba(251,113,133,.4); }

@@ -37,6 +37,12 @@ const Api = {
   async regenRecovery() {
     return await this.req('/api/recovery', { body: {} });
   },
+  async latestVersion() {
+    try { return await this.req('/api/version'); } catch { return { ok: false }; }
+  },
+  async flags() {
+    try { const d = await this.req('/api/flags'); return d.flags || {}; } catch { return {}; }
+  },
   async logout() {
     try { await this.req('/api/logout', { body: {} }); } catch { }
     await Store.setAuth('', null);

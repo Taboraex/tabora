@@ -29,6 +29,31 @@ const Wallpapers = {
 
   stop() { cancelAnimationFrame(this.raf); this.running = false; },
 
+  lowPower() { return !!Store.state.settings.lowPower; },
+
+  /* ---------- auto rotation (favorites first, then builtin shuffle) ---------- */
+  rotate() {
+    const s = Store.state.settings;
+    const mode = s.wpRotate || 'off';
+    if (mode === 'off') return;
+    const interval = mode === '6h' ? 6 * 3600000 : 24 * 3600000;
+    if (s.wpNext && Date.now() < s.wpNext) return;
+    const cur = s.wallpaper || {};
+    const favs = (s.favWalls || []).filter(f => f && (f.url || f.id));
+    let pick;
+    if (favs.length) {
+      const idx = favs.findIndex(f => f.id === cur.id && f.url === cur.url);
+      pick = favs[(idx + 1) % favs.length];
+    } else {
+      const i = this.list.findIndex(w => w.id === cur.id);
+      const step = 1 + Math.floor(Math.random() * (this.list.length - 1));
+      const nx = this.list[((i < 0 ? 0 : i) + step) % this.list.length];
+      pick = { type: 'builtin', id: nx.id, url: '' };
+    }
+    Store.setSettings({ wallpaper: pick, wpNext: Date.now() + interval });
+    showToast(I18n.t('wp_rotated'), 1800);
+  },
+
   apply(wp, silent) {
     wp = wp || Store.state.settings.wallpaper;
     const layerVideo = document.getElementById('wp-video');
@@ -40,14 +65,23 @@ const Wallpapers = {
 
     if (wp.type === 'builtin' || !wp.type) {
       this.canvas.style.display = 'block';
-      this.running = true;
-      this.loop(wp.id || 'aurora');
       const def = this.list.find(w => w.id === (wp.id || 'aurora')) || this.list[0];
+      if (this.lowPower()) {
+        /* static single frame — no animation loop */
+        const draw = this.painters[wp.id || 'aurora'] || this.painters.aurora;
+        draw(this.ctx, this.canvas.width, this.canvas.height, 2, this.stateFor(wp.id || 'aurora'));
+      } else {
+        this.running = true;
+        this.loop(wp.id || 'aurora');
+      }
       Theme.set(def.accent, true);
     } else if (wp.type === 'video' && wp.url) {
       layerVideo.src = wp.url;
       layerVideo.style.display = 'block';
-      layerVideo.play().catch(() => { });
+      if (this.lowPower()) {
+        /* freeze on first frame instead of playing */
+        layerVideo.onloadeddata = () => { try { layerVideo.pause(); } catch (e) { } };
+      } else layerVideo.play().catch(() => { });
       if (wp.accent) {
         Theme.set(wp.accent, true);
       } else {

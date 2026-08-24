@@ -31,6 +31,10 @@ function normCode(c) { return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g
 async function ensureRecoveryCol(db) {
   try { await db.prepare('ALTER TABLE users ADD COLUMN recovery TEXT').run(); } catch (e) { /* exists */ }
 }
+async function ensureUserCols(db) {
+  try { await db.prepare('ALTER TABLE users ADD COLUMN blocked INTEGER DEFAULT 0').run(); } catch (e) { /* exists */ }
+  try { await db.prepare('ALTER TABLE users ADD COLUMN last_seen INTEGER DEFAULT 0').run(); } catch (e) { /* exists */ }
+}
 function newToken() {
   return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 }
@@ -64,6 +68,12 @@ async function kvSet(db, key, value) {
 }
 async function kvDel(db, key) {
   await db.prepare('DELETE FROM kv WHERE key=?').bind(key).run();
+}
+async function log(db, type, msg) {
+  try {
+    await db.prepare('CREATE TABLE IF NOT EXISTS logs(id INTEGER PRIMARY KEY AUTOINCREMENT, ts INTEGER, type TEXT, msg TEXT)').run();
+    await db.prepare('INSERT INTO logs(ts, type, msg) VALUES(?,?,?)').bind(Date.now(), String(type).slice(0, 24), String(msg).slice(0, 400)).run();
+  } catch (e) { /* never break a request because of logging */ }
 }
 async function ghFetch(env, path, method, bodyObj) {
   const r = await fetch('https://api.github.com/repos/Taboraex/tabora/releases' + path, {
@@ -99,8 +109,13 @@ async function sessionUser(db, req) {
     return null;
   }
   const u = await db.prepare('SELECT * FROM users WHERE id=?').bind(s.user_id).first();
-  if (u) u._token = t;
-  return u || null;
+  if (!u) return null;
+  if (u.blocked) {
+    try { await db.prepare('DELETE FROM sessions WHERE token=?').bind(t).run(); } catch (e) { }
+    return null;
+  }
+  u._token = t;
+  return u;
 }
 
 /* ---------- prices (tgju mirror, cached 5 min) ---------- */
@@ -271,6 +286,7 @@ body.th-violet{--g1:#a78bfa;--g2:#6d28d9;--g3:#f472b6}
     <button onclick="tab('release',this)"> انتشار</button>
     <button onclick="tab('rels',this)">🚀 نسخه‌ها</button>
     <button onclick="tab('ann',this)">📢 اطلاعیه</button>
+    <button onclick="tab('flags',this)">🚩 قابلیت‌ها</button>
     <button onclick="tab('danger',this)">⚠️ منطقه خطر</button>
   </div>
   <div class="msg" id="msg"></div>
@@ -282,6 +298,7 @@ body.th-violet{--g1:#a78bfa;--g2:#6d28d9;--g3:#f472b6}
       <div class="card"><h2>🕘 رویدادهای اخیر</h2><div id="feed" style="max-height:260px;overflow-y:auto"></div></div>
     </div>
     <div class="card" style="margin-top:14px"><h2>📈 روند کل دانلودها</h2><svg id="ch-line" class="ch-line" viewBox="0 0 300 90" preserveAspectRatio="none"></svg></div>
+    <div class="card" style="margin-top:14px"><h2>👥 کاربران فعال روزانه (۱۴ روز اخیر)</h2><div id="ch-dau"></div></div>
     <div class="card" style="margin-top:14px">
       <h2>🔗 دسترسی سریع</h2>
       <div class="row">
@@ -331,8 +348,10 @@ body.th-violet{--g1:#a78bfa;--g2:#6d28d9;--g3:#f472b6}
       <textarea id="anntxt" rows="3" placeholder="مثلاً: نسخه ۱.۰.۸ منتشر شد! از منوی پشتیبانی آپدیت کنید 💜"></textarea>
       <span class="lbl">سطح</span>
       <select id="annlvl"><option value="info">info — عادی</option><option value="warn">warn — مهم</option><option value="gold">gold — ویژه</option></select>
-      <span class="lbl">⏰ زمان‌بندی انتشار (اختیاری — خالی = همین حالا)</span>
+      <span class="lbl">⏰ شروع نمایش (اختیاری — خالی = همین حالا)</span>
       <input type="datetime-local" id="annat">
+      <span class="lbl">🏁 پایان نمایش (اختیاری — خالی = تا حذف دستی)</span>
+      <input type="datetime-local" id="annend">
       <div class="row" style="margin-top:12px">
         <button class="btn" onclick="saveAnn()">انتشار اطلاعیه 📢</button>
         <button class="btn gray" onclick="clearAnn()">حذف اطلاعیه</button>
@@ -340,9 +359,18 @@ body.th-violet{--g1:#a78bfa;--g2:#6d28d9;--g3:#f472b6}
     </div>
   </div>
 
+  <div id="v-flags" class="hide">
+    <div class="card"><h2>🚩 فیچرفلگ‌ها — کنترل قابلیت‌ها از راه دور</h2>
+      <p style="font-size:.72rem;opacity:.55;margin-bottom:10px">غیرفعال‌کردن هر مورد، آن بخش را در نیوتبِ بعدیِ همهٔ کاربران پنهان می‌کند — بدون انتشار نسخهٔ جدید.</p>
+      <div id="flags-list"></div>
+      <button class="btn" style="margin-top:12px" onclick="saveFlags()">💾 ذخیره فیچرفلگ‌ها</button>
+    </div>
+  </div>
+
   <div id="v-danger" class="hide">
     <div class="card"><h2>⚠️ منطقه خطر</h2>
       <div class="row">
+        <button class="btn gray" onclick="dlExport()">📦 دریافت پشتیبان کامل دیتابیس (JSON)</button>
         <button class="btn red" onclick="purgeSessions()">🔥 باطل‌کردن همه نشست‌ها</button>
         <button class="btn red" onclick="resetUsers()">☠️ حذف همه کاربران</button>
       </div>
@@ -358,7 +386,7 @@ function api(path,body){return fetch(path,{method:body?'POST':'GET',headers:{'Co
 function doLogin(){var k=document.getElementById('key').value.trim();if(!k)return;sessionStorage.setItem('tk',k);api('/admin/stats').then(function(){enter();}).catch(function(e){var m=document.getElementById('lmsg');m.className='msg er';m.textContent='کلید اشتباه است: '+e.message;sessionStorage.removeItem('tk');});}
 function logout(){sessionStorage.removeItem('tk');location.reload();}
 function enter(){document.getElementById('login').classList.add('hide');document.getElementById('app').classList.remove('hide');loadDash();}
-function tab(id,btn){['dash','users','release','rels','ann','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='rels')loadRels();if(id==='ann')loadAnn();}
+function tab(id,btn){['dash','users','release','rels','ann','flags','danger'].forEach(function(t){document.getElementById('v-'+t).classList.toggle('hide',t!==id);});document.querySelectorAll('.tabs button').forEach(function(b){b.classList.remove('on');});btn.classList.add('on');if(id==='dash')loadDash();if(id==='users')loadUsers();if(id==='release')loadRel();if(id==='rels')loadRels();if(id==='ann')loadAnn();if(id==='flags')loadFlags();}
 function mb(n){return (n/1048576).toFixed(1)+' MB';}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');}
 function loadRels(){Promise.all([api('/admin/gh/releases'),api('/admin/gh/health')]).then(function(res){var d=res[0],h=res[1];var tot=0,lc=0,dc=0,pend='',live='';d.releases.forEach(function(r){var dl=0,prot='',psz=0;r.assets.forEach(function(a){dl+=a.downloads||0;if(a.name==='tabora-protected.zip'){prot=a.url;psz=a.size;}});tot+=dl;if(r.draft)dc++;else lc++;var notes=r.body?'<details style="margin-top:8px"><summary style="cursor:pointer;font-size:.68rem;opacity:.6">📝 یادداشت نسخه</summary><pre style="margin-top:6px">'+esc(r.body)+'</pre></details>':'';var acts='',card='';if(r.draft){acts='<button class="btn sm" onclick="pubRel('+r.id+',\\''+r.tag+'\\')">✅ تایید و انتشار</button> <button class="btn sm gray" onclick="editRel('+r.id+',\\''+r.tag+'\\')">✏️</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑</button>';card='<div style="border:1px solid rgba(250,204,21,.35);background:rgba(250,204,21,.06);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+esc(r.name)+'<br><span style="font-size:.66rem;opacity:.55">پیش‌نویس — '+new Date(r.created_at).toLocaleString('fa-IR')+' · '+mb(psz)+'</span>'+notes+'</div><div class="row">'+acts+'</div></div></div>';pend+=card;}else{acts='<span class="badge b-owner">live</span>'+(r.prerelease?' <span class="badge b-admin">pre</span>':'')+(prot?' <button class="btn sm gray" onclick="pinRel(\\''+prot+'\\')">📌 دانلود</button>':'')+' <button class="btn sm gray" onclick="editRel('+r.id+',\\''+r.tag+'\\')">✏️</button> <button class="btn sm gray" onclick="togglePre('+r.id+','+(!r.prerelease)+')">🏷 '+ (r.prerelease?'پیش‌انتشار: بله':'پیش‌انتشار: نه') +'</button> <button class="btn sm red" onclick="delRel('+r.id+')">🗑</button>';card='<div style="border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px;margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center"><div><b dir="ltr">'+r.tag+'</b> '+esc(r.name)+'<br><span style="font-size:.66rem;opacity:.55">منتشرشده: '+new Date(r.published_at).toLocaleString('fa-IR')+' · '+mb(psz)+' · ⬇️ '+(dl||0).toLocaleString('fa-IR')+' دانلود</span>'+notes+'</div><div class="row">'+acts+'</div></div></div>';live+=card;}});document.getElementById('rel-stats').innerHTML='<div class="stat"><b>'+tot.toLocaleString('fa-IR')+'</b><span>مجموع دانلودها</span></div><div class="stat"><b>'+lc.toLocaleString('fa-IR')+'</b><span>نسخه منتشرشده</span></div><div class="stat"><b>'+dc.toLocaleString('fa-IR')+'</b><span>در انتظار تایید</span></div><div class="stat"><b>'+(h.ok?'✔':'✖')+'</b><span>سلامت لینک'+(h.ok?' '+mb(h.size):'')+'</span></div>';document.getElementById('rels-pend').innerHTML=pend||'<p style="opacity:.5;font-size:.75rem">هیچ نسخه‌ای منتظر تایید نیست ✔</p>';document.getElementById('rels-live').innerHTML=live||'';}).catch(function(e){msg('خطا: '+e.message);});}
@@ -367,9 +395,10 @@ function editRel(id,tag){var n=prompt('نام نمایشی نسخه ('+tag+'):',
 function togglePre(id,v){api('/admin/gh/patch',{id:id,prerelease:v}).then(function(){msg('تغییر کرد 🏷',true);loadRels();}).catch(function(e){msg(e.message);});}
 function delRel(id){if(!confirm('این ریلیز برای همیشه حذف شود؟'))return;api('/admin/gh/delete',{id:id}).then(function(){msg('حذف شد',true);loadRels();}).catch(function(e){msg(e.message);});}
 function pinRel(url){api('/admin/settings',{settings:{download_url:url}}).then(function(){msg('لینک دانلود روی این نسخه قفل شد 📌',true);}).catch(function(e){msg(e.message);});}
-function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';});Promise.all([api('/admin/gh/releases'),api('/admin/logs')]).then(function(res){var rels=res[0].releases.filter(function(r){return !r.draft;}).slice(0,8);var max=1;var data=rels.map(function(r){var dl=0;r.assets.forEach(function(x){dl+=x.downloads||0;});if(dl>max)max=dl;return {tag:r.tag,dl:dl};});var html='';data.forEach(function(d){html+='<div class="bar-row"><span dir="ltr">'+d.tag+'</span><div class="bar"><i style="width:'+Math.max(4,Math.round(d.dl/max*100))+'%"></i></div><b>'+d.dl.toLocaleString('fa-IR')+'</b></div>';});document.getElementById('ch-dl').innerHTML=html||'<p style="opacity:.5;font-size:.75rem">—</p>';var icons={publish:'🚀',del:'🗑',delete:'🗑',patch:'✏️',settings:'⚙️',pin:'📌'};var fh='';res[1].logs.forEach(function(l){fh+='<div class="feed-row"><span>'+(icons[l.type]||'•')+'</span><div><b>'+esc(l.msg)+'</b><small>'+new Date(l.ts).toLocaleString('fa-IR')+'</small></div></div>';});document.getElementById('feed').innerHTML=fh||'<p style="opacity:.5;font-size:.75rem">هنوز رویدادی ثبت نشده — اولین کنش‌ها همین‌جا می‌افتن ✨</p>';}).catch(function(){});loadHist();loadTheme();}
+function loadDash(){api('/admin/stats').then(function(s){document.getElementById('stats').innerHTML='<div class="stat"><b>'+s.users+'</b><span>کاربران</span></div><div class="stat"><b>'+s.staff+'</b><span>Owner/Admin</span></div><div class="stat"><b>'+s.sessions+'</b><span>نشست فعال</span></div><div class="stat"><b>'+s.dau+'</b><span>فعال (۲۴ ساعت)</span></div><div class="stat"><b>'+(s.d1_file?'✔':'—')+'</b><span>زیپ D1</span></div>';var daily=s.daily||[];var dh='';if(daily.length){var mx=1;daily.forEach(function(x){if(x.u>mx)mx=x.u;});daily.forEach(function(x){dh+='<div class="bar-row"><span dir="ltr">'+x.day.slice(5)+'</span><div class="bar"><i style="width:'+Math.max(4,Math.round(x.u/mx*100))+'%"></i></div><b>'+x.u.toLocaleString('fa-IR')+'</b></div>';});}var dauEl=document.getElementById('ch-dau');if(dauEl)dauEl.innerHTML=dh||'<p style="opacity:.5;font-size:.75rem">هنوز داده‌ای نیست — هر نیوتب یک نقطه ✨</p>';});Promise.all([api('/admin/gh/releases'),api('/admin/logs')]).then(function(res){var rels=res[0].releases.filter(function(r){return !r.draft;}).slice(0,8);var max=1;var data=rels.map(function(r){var dl=0;r.assets.forEach(function(x){dl+=x.downloads||0;});if(dl>max)max=dl;return {tag:r.tag,dl:dl};});var html='';data.forEach(function(d){html+='<div class="bar-row"><span dir="ltr">'+d.tag+'</span><div class="bar"><i style="width:'+Math.max(4,Math.round(d.dl/max*100))+'%"></i></div><b>'+d.dl.toLocaleString('fa-IR')+'</b></div>';});document.getElementById('ch-dl').innerHTML=html||'<p style="opacity:.5;font-size:.75rem">—</p>';var icons={publish:'🚀',del:'🗑',delete:'🗑',patch:'✏️',settings:'⚙️',pin:'📌'};var fh='';res[1].logs.forEach(function(l){fh+='<div class="feed-row"><span>'+(icons[l.type]||'•')+'</span><div><b>'+esc(l.msg)+'</b><small>'+new Date(l.ts).toLocaleString('fa-IR')+'</small></div></div>';});document.getElementById('feed').innerHTML=fh||'<p style="opacity:.5;font-size:.75rem">هنوز رویدادی ثبت نشده — اولین کنش‌ها همین‌جا می‌افتن ✨</p>';}).catch(function(){});loadHist();loadTheme();}
 var USERS=[];
-function loadUsers(){api('/admin/users').then(function(d){USERS=d.users;var t=document.getElementById('utable');t.innerHTML='<tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>تاریخ</th><th>عملیات</th></tr>';USERS.forEach(function(u){var tr=document.createElement('tr');tr.innerHTML='<td><b>'+u.username+'</b><br><span style="opacity:.5;font-size:.66rem">'+u.name+'</span></td><td dir="ltr" style="text-align:right">'+u.email+'</td><td><span class="badge b-'+u.role+'">'+u.role+'</span></td><td style="font-size:.66rem;opacity:.6">'+new Date(u.created_at).toLocaleDateString('fa-IR')+'</td><td><select onchange="setRole(\\''+u.username+'\\',this.value)" style="width:auto;padding:4px 8px;font-size:.7rem"><option'+(u.role==='user'?' selected':'')+'>user</option><option'+(u.role==='admin'?' selected':'')+'>admin</option><option'+(u.role==='owner'?' selected':'')+'>owner</option></select> <button class="btn sm gray" onclick="setPass(\\''+u.username+'\\')">🔑</button> <button class="btn sm gray" onclick="viewU(\\''+u.username+'\\')">👁</button> <button class="btn sm red" onclick="delU(\\''+u.username+'\\')">🗑</button></td>';t.appendChild(tr);});});}
+function loadUsers(){api('/admin/users').then(function(d){USERS=d.users;var t=document.getElementById('utable');t.innerHTML='<tr><th>کاربر</th><th>ایمیل</th><th>نقش</th><th>آخرین فعالیت</th><th>وضعیت</th><th>عملیات</th></tr>';USERS.forEach(function(u){var tr=document.createElement('tr');var ls=u.last_seen?new Date(u.last_seen).toLocaleString('fa-IR'):'—';var st=u.blocked?'<span class="badge" style="background:rgba(244,63,94,.18);color:#fda4af">🚫 مسدود</span>':'<span class="badge b-user">فعال</span>';tr.innerHTML='<td><b>'+u.username+'</b><br><span style="opacity:.5;font-size:.66rem">'+u.name+'</span></td><td dir="ltr" style="text-align:right">'+u.email+'</td><td><span class="badge b-'+u.role+'">'+u.role+'</span></td><td style="font-size:.66rem;opacity:.6">'+ls+'</td><td>'+st+'</td><td><select onchange="setRole(\\''+u.username+'\\',this.value)" style="width:auto;padding:4px 8px;font-size:.7rem"><option'+(u.role==='user'?' selected':'')+'>user</option><option'+(u.role==='admin'?' selected':'')+'>admin</option><option'+(u.role==='owner'?' selected':'')+'>owner</option></select> <button class="btn sm gray" onclick="setPass(\\''+u.username+'\\')">🔑</button> <button class="btn sm gray" onclick="viewU(\\''+u.username+'\\')">👁</button> <button class="btn sm '+(u.blocked?'gray':'red')+'" onclick="blockU(\\''+u.username+'\\','+(u.blocked?0:1)+')">'+(u.blocked?'✅ رفع':'🚫')+'</button> <button class="btn sm red" onclick="delU(\\''+u.username+'\\')">🗑</button></td>';t.appendChild(tr);});});}
+function blockU(u,v){if(!confirm(v?'کاربر '+u+' مسدود شود؟ دیگر نمی‌تواند وارد شود.':'مسدودی '+u+' رفع شود؟'))return;api('/admin/block',{username:u,blocked:v?1:0}).then(function(){msg(v?'🚫 مسدود شد':'✅ رفع مسدودی شد',true);loadUsers();}).catch(function(e){msg(e.message);});}
 function setRole(u,r){api('/admin/role',{username:u,role:r}).then(function(){msg('نقش '+u+' → '+r,true);loadUsers();}).catch(function(e){msg(e.message);});}
 function setPass(u){var pw=prompt('رمز جدید برای '+u+' (حداقل ۶ کاراکتر):');if(!pw)return;api('/admin/set-pass',{username:u,password:pw}).then(function(){msg('رمز '+u+' تغییر کرد 🔑',true);}).catch(function(e){msg(e.message);});}
 function delU(u){if(!confirm('کاربر '+u+' برای همیشه حذف شود؟'))return;api('/admin/del-user',{username:u}).then(function(){msg(u+' حذف شد',true);loadUsers();}).catch(function(e){msg(e.message);});}
@@ -385,7 +414,7 @@ function purgeSessions(){if(!confirm('همه نشست‌ها باطل شود؟ �
 function resetUsers(){if(!confirm('همه کاربران حذف شوند؟ این عمل غیرقابل بازگشت است!'))return;api('/admin/reset-users',{ }).then(function(){msg('همه کاربران حذف شدند ☠️',true);loadUsers();}).catch(function(e){msg(e.message);});}
 function ckOpen(){var k=document.getElementById('cmdk');k.classList.remove('hide');var inp=document.getElementById('ck-in');inp.value='';ckRender('');inp.focus();}
 function ckClose(){document.getElementById('cmdk').classList.add('hide');}
-function ckCmds(q){var tabs=['📊 نمای کلی','👥 کاربران','🛍 انتشار',' نسخه‌ها',' اطلاعیه','⚠️ منطقه خطر'];var out=[];tabs.forEach(function(t,i){out.push([t,function(){document.querySelectorAll('.tabs button')[i].click();}]);});out.push(['🔗 کپی آدرس پنل',function(){navigator.clipboard.writeText(location.href);}]);out.push(['📦 کپی لینک دانلود پایدار',function(){navigator.clipboard.writeText(location.origin+'/download');}]);out.push(['🐙 بازکردن گیت‌هاب',function(){window.open('https://github.com/Taboraex/tabora');}]);if(q)out=out.filter(function(c){return c[0].indexOf(q)>-1;});return out;}
+function ckCmds(q){var tabs=['📊 نمای کلی','👥 کاربران','🛍 انتشار',' نسخه‌ها',' اطلاعیه','🚩 قابلیت‌ها','⚠️ منطقه خطر'];var out=[];tabs.forEach(function(t,i){out.push([t,function(){document.querySelectorAll('.tabs button')[i].click();}]);});out.push(['🔗 کپی آدرس پنل',function(){navigator.clipboard.writeText(location.href);}]);out.push(['📦 کپی لینک دانلود پایدار',function(){navigator.clipboard.writeText(location.origin+'/download');}]);out.push(['🐙 بازکردن گیت‌هاب',function(){window.open('https://github.com/Taboraex/tabora');}]);if(q)out=out.filter(function(c){return c[0].indexOf(q)>-1;});return out;}
 var CKCUR=[];function ckRender(q){CKCUR=ckCmds(q);var h='';CKCUR.slice(0,8).forEach(function(c,i){h+='<div data-i="'+i+'" class="'+(i===0?'sel':'')+'">'+c[0]+'</div>';});var list=document.getElementById('ck-list');list.innerHTML=h;for(var i=0;i<list.children.length;i++){list.children[i].onclick=function(){CKCUR[parseInt(this.getAttribute('data-i'),10)][1]();ckClose();};}}
 document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&String(e.key).toLowerCase()==='k'){e.preventDefault();if(document.getElementById('cmdk').classList.contains('hide'))ckOpen();else ckClose();}else if(e.key==='Escape'){ckClose();}else if(e.key==='Enter'&&!document.getElementById('cmdk').classList.contains('hide')){var sel=document.querySelector('#ck-list .sel');if(sel)sel.click();}});
 document.getElementById('ck-in').addEventListener('input',function(){ckRender(this.value);});
@@ -393,8 +422,11 @@ function applyTheme(t){document.body.classList.remove('th-rose','th-lime','th-vi
 function setTheme(t){api('/admin/settings',{settings:{theme:t==='cyan'?null:t}}).then(function(){applyTheme(t);}).catch(function(e){msg(e.message);});}
 function loadTheme(){api('/admin/settings').then(function(s){applyTheme(s.settings.theme||'cyan');}).catch(function(){});}
 function loadHist(){api('/admin/history').then(function(d){var h=d.hist||[];var svg=document.getElementById('ch-line');if(!svg)return;if(h.length<2){svg.outerHTML='<p style="opacity:.5;font-size:.75rem">دادهٔ کافی نیست — هر روز یه نقطه اضافه می‌شه 📈</p>';return;}var max=Math.max.apply(null,h.map(function(x){return x.total;}));var min=Math.min.apply(null,h.map(function(x){return x.total;}));var W=300,H=90,P=10;var pts=h.map(function(x,i){var px=P+i*(W-2*P)/(h.length-1);var py=H-P-((x.total-min)/((max-min)||1))*(H-2*P);return [px,py];});var line=pts.map(function(p,i){return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1);}).join(' ');var area=line+' L'+pts[pts.length-1][0].toFixed(1)+' '+H+' L'+pts[0][0].toFixed(1)+' '+H+' Z';var dots=pts.map(function(p){return '<circle class="dot" cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.6"/>';}).join('');svg.innerHTML='<defs><linearGradient id="chg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--g1)"/><stop offset="1" stop-color="transparent"/></linearGradient></defs><path class="area" d="'+area+'"/><path class="ln" d="'+line+'"/>'+dots+'<text x="'+P+'" y="'+(H-1)+'">'+h[0].day.slice(5)+'</text><text x="'+(W-P)+'" y="'+(H-1)+'" text-anchor="end">'+h[h.length-1].day.slice(5)+' · '+h[h.length-1].total.toLocaleString('fa-IR')+' ⬇</text>';}).catch(function(){});}
-function loadAnn(){api('/admin/settings').then(function(s){document.getElementById('anntxt').value=s.settings.announce_text||'';document.getElementById('annlvl').value=s.settings.announce_level||'info';var at=document.getElementById('annat');if(at){at.value=s.settings.announce_at?new Date(parseInt(s.settings.announce_at,10)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';}});}
-function saveAnn(){var at=document.getElementById('annat').value;var ms=at?new Date(at).getTime():0;api('/admin/settings',{settings:{announce_text:document.getElementById('anntxt').value.trim()||null,announce_level:document.getElementById('annlvl').value,announce_at:ms>Date.now()?ms:null}}).then(function(){msg(ms>Date.now()?'اطلاعیه زمان‌بندی شد ⏰':'اطلاعیه منتشر شد 📢',true);}).catch(function(e){msg(e.message);});}
+function loadAnn(){api('/admin/settings').then(function(s){document.getElementById('anntxt').value=s.settings.announce_text||'';document.getElementById('annlvl').value=s.settings.announce_level||'info';var toLocal=function(ms){return ms?new Date(parseInt(ms,10)-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16):'';};var at=document.getElementById('annat');if(at)at.value=toLocal(s.settings.announce_start||s.settings.announce_at);var en=document.getElementById('annend');if(en)en.value=toLocal(s.settings.announce_end);});}
+function saveAnn(){var at=document.getElementById('annat').value;var ms=at?new Date(at).getTime():0;var enEl=document.getElementById('annend');var mE=enEl&&enEl.value?new Date(enEl.value).getTime():0;api('/admin/settings',{settings:{announce_text:document.getElementById('anntxt').value.trim()||null,announce_level:document.getElementById('annlvl').value,announce_at:ms>Date.now()?ms:null,announce_start:ms?ms:null,announce_end:mE?mE:null}}).then(function(){msg(ms>Date.now()?'اطلاعیه زمان‌بندی شد ⏰':'اطلاعیه منتشر شد 📢',true);}).catch(function(e){msg(e.message);});}
+function loadFlags(){api('/admin/settings').then(function(s){var f=(s.settings&&s.settings.flags)||{};var defs=[['prices','💱 ویجت قیمت ارز و طلا'],['weather','🌤️ ویجت آب‌وهوا'],['quotes','💫 جملهٔ روز'],['chat','💬 چت و دوستان'],['wallpapers','🖼️ پنل والپیپرها']];var h='';defs.forEach(function(d){h+='<label style="display:flex;gap:10px;align-items:center;margin:9px 0;font-size:.8rem;cursor:pointer"><input type="checkbox" style="width:auto" data-flag="'+d[0]+'"'+(f[d[0]]===false?'':' checked')+'><span>'+d[1]+'</span></label>';});document.getElementById('flags-list').innerHTML=h;}).catch(function(e){msg(e.message);});}
+function saveFlags(){var f={};document.querySelectorAll('#flags-list input[data-flag]').forEach(function(i){f[i.getAttribute('data-flag')]=i.checked;});api('/admin/settings',{settings:{flags:f}}).then(function(){msg('فیچرفلگ‌ها ذخیره شد 🚩 (در نیوتب بعدی کاربران اعمال می‌شود)',true);}).catch(function(e){msg(e.message);});}
+function dlExport(){msg('در حال آماده‌سازی پشتیبان…');fetch('/admin/export',{headers:{'x-admin-key':K()}}).then(function(r){if(!r.ok)throw new Error(r.status);return r.blob();}).then(function(b){var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='tabora-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove();msg('پشتیبان کامل دانلود شد 📦',true);}).catch(function(e){msg('خطا در پشتیبان: '+e.message);});}
 if(K()){api('/admin/stats').then(enter).catch(function(){});}
 </script>
 <div id="cmdk" class="hide"><div class="ck-box"><input id="ck-in" placeholder="🔍 دستور یا بخش... (Esc = بستن)"><div id="ck-list"></div></div></div>
@@ -456,6 +488,10 @@ async function handle(req, env) {
       await db.prepare('CREATE TABLE IF NOT EXISTS files(id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, name TEXT, ord INTEGER, data TEXT)').run();
       await db.prepare('CREATE INDEX IF NOT EXISTS idx_files ON files(key, ord)').run();
       await db.prepare('CREATE TABLE IF NOT EXISTS kv(key TEXT PRIMARY KEY, value TEXT)').run();
+      await db.prepare('CREATE TABLE IF NOT EXISTS hist(day TEXT PRIMARY KEY, total INTEGER)').run();
+      await db.prepare('CREATE TABLE IF NOT EXISTS beat_days(day TEXT, uid TEXT, PRIMARY KEY(day, uid))').run();
+      await ensureUserCols(db);
+      await log(db, 'migrate', 'schema checked');
       return json({ ok: true });
     }
     if (p === '/admin/file' && req.method === 'POST') {
@@ -513,12 +549,19 @@ async function handle(req, env) {
       const files = await db.prepare("SELECT COUNT(*) AS c, MAX(name) AS n FROM files WHERE key='latest'").first();
       await db.prepare('CREATE TABLE IF NOT EXISTS beats(uid TEXT PRIMARY KEY, last INTEGER)').run();
       const dau = await db.prepare('SELECT COUNT(*) AS c FROM beats WHERE last > ?').bind(Date.now() - 86400000).first();
-      return json({ users: users.c, staff: staff.c, sessions: sess.c, d1_file: files.n || null, dau: dau.c, time: Date.now() });
+      let daily = [];
+      try {
+        const days = await db.prepare('SELECT day, COUNT(*) AS u FROM beat_days WHERE day >= ? GROUP BY day ORDER BY day ASC')
+          .bind(new Date(Date.now() - 13 * 86400000).toISOString().slice(0, 10)).all();
+        daily = days.results || [];
+      } catch (e) { }
+      return json({ users: users.c, staff: staff.c, sessions: sess.c, d1_file: files.n || null, dau: dau.c, daily, time: Date.now() });
     }
 
     if (p === '/admin/users' && req.method === 'GET') {
       if (!hasKey) return err('forbidden', 403);
-      const rows = await db.prepare('SELECT id,email,username,name,role,avatar_kind,settings,bookmarks,created_at FROM users ORDER BY created_at ASC').all();
+      await ensureUserCols(db);
+      const rows = await db.prepare('SELECT id,email,username,name,role,avatar_kind,settings,bookmarks,blocked,last_seen,created_at FROM users ORDER BY created_at ASC').all();
       return json({ users: rows.results || [] });
     }
 
@@ -529,6 +572,20 @@ async function handle(req, env) {
       if (!['user', 'admin', 'owner'].includes(role)) return err('bad_role');
       const r = await db.prepare('UPDATE users SET role=? WHERE username=? OR email=?').bind(role, String(b.username || '').toLowerCase(), String(b.username || '').toLowerCase()).run();
       return json({ ok: true, changed: r.meta && r.meta.changes });
+    }
+
+    if (p === '/admin/block' && req.method === 'POST') {
+      if (!hasKey) return err('forbidden', 403);
+      const b = await body(req);
+      await ensureUserCols(db);
+      const idf = String(b.username || '').toLowerCase();
+      const u = await db.prepare('SELECT id, username FROM users WHERE username=? OR email=?').bind(idf, idf).first();
+      if (!u) return err('user_not_found', 404);
+      const blocked = b.blocked ? 1 : 0;
+      await db.prepare('UPDATE users SET blocked=? WHERE id=?').bind(blocked, u.id).run();
+      if (blocked) await db.prepare('DELETE FROM sessions WHERE user_id=?').bind(u.id).run();
+      await log(db, blocked ? 'block' : 'unblock', 'user ' + u.username + (blocked ? ' blocked' : ' unblocked'));
+      return json({ ok: true, blocked });
     }
 
     if (p === '/admin/del-user' && req.method === 'POST') {
@@ -615,6 +672,26 @@ async function handle(req, env) {
       return json({ ok: true, settings: s });
     }
 
+    if (p === '/admin/export' && req.method === 'GET') {
+      if (!hasKey) return err('forbidden', 403);
+      const out = { exported_at: new Date().toISOString(), service: 'tabora-api' };
+      const dump = async (key, sql) => { try { const r = await db.prepare(sql).all(); out[key] = r.results || []; } catch (e) { out[key] = null; } };
+      await dump('users', 'SELECT id,email,username,name,bio,avatar_kind,role,blocked,last_seen,created_at FROM users ORDER BY created_at ASC');
+      await dump('sessions', 'SELECT user_id, expires FROM sessions');
+      await dump('friends', 'SELECT * FROM friends');
+      await dump('messages', 'SELECT * FROM messages ORDER BY id DESC LIMIT 5000');
+      await dump('beats', 'SELECT * FROM beats');
+      await dump('beat_days', 'SELECT day, COUNT(*) AS u FROM beat_days GROUP BY day ORDER BY day DESC LIMIT 90');
+      await dump('hist', 'SELECT * FROM hist ORDER BY day DESC LIMIT 90');
+      let s = {};
+      try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      out.settings = s;
+      await log(db, 'export', 'database exported by admin');
+      return new Response(JSON.stringify(out, null, 1), {
+        headers: { ...CORS, 'Content-Type': 'application/json', 'Content-Disposition': 'attachment; filename="tabora-backup-' + new Date().toISOString().slice(0, 10) + '.json"' }
+      });
+    }
+
     if (p === '/admin/reset-users' && req.method === 'POST') {
       if (!hasKey) return err('forbidden', 403);
       await db.prepare('DELETE FROM messages').run();
@@ -627,6 +704,37 @@ async function handle(req, env) {
     /* ---------- prices ---------- */
     if (p === '/api/prices') return json(await getPrices());
 
+    /* ---------- latest published release (update check) ---------- */
+    if (p === '/api/version') {
+      let cached = {};
+      try { cached = JSON.parse((await kvGet(db, 'version_cache')) || '{}'); } catch (e) { }
+      if (!cached.tag || Date.now() - (cached.t || 0) > 15 * 60000) {
+        try {
+          const g = await ghFetch(env, '/latest');
+          if (g.status === 200 && g.data && g.data.tag_name) {
+            const prot = (g.data.assets || []).find(a => a.name === 'tabora-protected.zip') || (g.data.assets || [])[0];
+            cached = {
+              t: Date.now(), tag: g.data.tag_name,
+              version: String(g.data.tag_name).replace(/^v/, ''),
+              name: g.data.name || g.data.tag_name,
+              url: prot ? prot.browser_download_url : '',
+              size: prot ? prot.size : 0,
+              published_at: g.data.published_at
+            };
+            await kvSet(db, 'version_cache', JSON.stringify(cached));
+          }
+        } catch (e) { }
+      }
+      return json({ ok: !!cached.tag, version: cached.version || null, tag: cached.tag || null, url: cached.url || '', name: cached.name || null, published_at: cached.published_at || null });
+    }
+
+    /* ---------- remote feature flags ---------- */
+    if (p === '/api/flags') {
+      let s = {};
+      try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
+      return json({ flags: (s.flags && typeof s.flags === 'object') ? s.flags : {} });
+    }
+
     /* ---------- public announcement (set from admin panel) ---------- */
     if (p === '/api/beat' && req.method === 'POST') {
       const b = await body(req);
@@ -634,14 +742,24 @@ async function handle(req, env) {
       if (uid) {
         await db.prepare('CREATE TABLE IF NOT EXISTS beats(uid TEXT PRIMARY KEY, last INTEGER)').run();
         await db.prepare('INSERT INTO beats(uid,last) VALUES(?,?) ON CONFLICT(uid) DO UPDATE SET last=excluded.last').bind(uid, Date.now()).run();
+        try {
+          const day = new Date().toISOString().slice(0, 10);
+          await db.prepare('CREATE TABLE IF NOT EXISTS beat_days(day TEXT, uid TEXT, PRIMARY KEY(day, uid))').run();
+          await db.prepare('INSERT OR IGNORE INTO beat_days(day, uid) VALUES(?,?)').bind(day, uid).run();
+          if (Math.random() < 0.03) {
+            await db.prepare('DELETE FROM beat_days WHERE day < ?').bind(new Date(Date.now() - 60 * 86400000).toISOString().slice(0, 10)).run();
+          }
+        } catch (e) { }
       }
       return json({ ok: true });
     }
     if (p === '/api/announce') {
       let s = {};
       try { s = JSON.parse((await kvGet(db, 'settings')) || '{}'); } catch (e) { }
-      const at = parseInt(s.announce_at || 0, 10);
-      if (at && Date.now() < at) return json({ text: '', level: 'info' });
+      const now = Date.now();
+      const start = parseInt(s.announce_start || s.announce_at || 0, 10);
+      const end = parseInt(s.announce_end || 0, 10);
+      if (now < start || (end && now > end)) return json({ text: '', level: 'info' });
       return json({ text: String(s.announce_text || ''), level: String(s.announce_level || 'info') });
     }
 
@@ -685,8 +803,10 @@ async function handle(req, env) {
       const b = await body(req);
       const idf = String(b.identifier || b.email || '').toLowerCase().trim();
       const password = String(b.password || '');
+      await ensureUserCols(db);
       const u = await db.prepare('SELECT * FROM users WHERE email=? OR username=?').bind(idf, idf).first();
       if (!u) return err('user_not_found', 404);
+      if (u.blocked) return err('blocked', 403);
       const [salt, stored] = u.pass.split(':');
       const candidates = [
         await sha256(salt + '::' + password),
@@ -779,7 +899,10 @@ async function handle(req, env) {
       return json({ code });
     }
 
-    if (p === '/api/me' && req.method === 'GET') return json({ user: publicUser(me) });
+    if (p === '/api/me' && req.method === 'GET') {
+      try { await db.prepare('UPDATE users SET last_seen=? WHERE id=?').bind(Date.now(), me.id).run(); } catch (e) { }
+      return json({ user: publicUser(me) });
+    }
 
     /* ---------- update profile ---------- */
     if (p === '/api/me' && req.method === 'PATCH') {

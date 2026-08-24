@@ -105,18 +105,27 @@ function el(tag, cls, html) { const d = document.createElement(tag); if (cls) d.
 const Widgets = {
   clockTimer: 0, weatherTimer: 0,
 
+  /* remote feature flags (window.FLAGS fetched from /api/flags) */
+  flagOff(widgetId) {
+    const F = window.FLAGS || {};
+    const map = { weather: 'weather', prices: 'prices', quote: 'quotes' };
+    const k = map[widgetId];
+    return k && F[k] === false;
+  },
+
   renderAll() {
     this.renderClock();
     const row = document.getElementById('widgets-row');
     row.innerHTML = '';
     const s = Store.state.settings;
-    const def = ['weather', 'prices', 'bookmarks', 'quote', 'focus', 'todo'];
+    const def = ['calendar', 'weather', 'prices', 'bookmarks', 'quote', 'focus', 'todo'];
     let order = (s.widgets && s.widgets.order) || def;
     def.forEach(id => { if (!order.includes(id)) order.push(id); });
     const hidden = (s.widgets && s.widgets.hidden) || [];
     let i = 0;
     order.forEach(id => {
       if (hidden.includes(id)) return;
+      if (this.flagOff(id)) return;
       const w = this.build(id);
       if (w) { w.classList.add('w-in'); w.style.animationDelay = (i++ * 80) + 'ms'; row.appendChild(w); }
     });
@@ -131,6 +140,7 @@ const Widgets = {
         });
       });
     }
+    this.renderCalendar();
     this.renderWeather();
     this.renderPrices();
     this.renderBookmarks();
@@ -144,7 +154,14 @@ const Widgets = {
     const card = el('div', 'widget glass', null);
     card.dataset.wid = id;
     card.draggable = false;
-    if (id === 'weather') {
+    if (id === 'calendar') {
+      card.id = 'w-calendar';
+      card.innerHTML = `<div class="w-title"><span>🗓️</span><b data-i18n="widget_calendar"></b><span class="w-badge" id="cal-off-badge"></span></div>
+        <div class="cal-main"><div class="cal-day" id="cal-day">--</div>
+          <div class="cal-side"><b id="cal-month"></b><span id="cal-greg" class="muted"></span></div></div>
+        <div class="cal-ev" id="cal-ev"></div>
+        <div class="cal-next" id="cal-next"></div>`;
+    } else if (id === 'weather') {
       card.id = 'w-weather';
       card.innerHTML = `<div class="w-title"><span>🌤️</span><b data-i18n="widget_weather"></b></div><div class="wx-scene"></div><div class="wx-body"><div class="wx-temp">--°</div><div class="wx-meta"></div></div>`;
     } else if (id === 'prices') {
@@ -170,6 +187,37 @@ const Widgets = {
         <div class="td-list" id="td-list"></div>`;
     } else return null;
     return card;
+  },
+
+  /* ---------- Jalali calendar + Iranian holidays ---------- */
+  renderCalendar() {
+    const card = document.getElementById('w-calendar');
+    if (!card) return;
+    const now = new Date();
+    const j = Jalali.toJalali(now);
+    const fa = I18n.lang === 'fa';
+    const months = fa ? Jalali.MONTHS_FA : Jalali.MONTHS_EN;
+    card.querySelector('#cal-day').textContent = fa ? Jalali.toFaDigits(j.jd) : j.jd;
+    card.querySelector('#cal-month').textContent = months[j.jm - 1] + ' ' + (fa ? Jalali.toFaDigits(j.jy) : j.jy);
+    card.querySelector('#cal-greg').textContent = Jalali.dayName(now) + ' · ' +
+      new Intl.DateTimeFormat(fa ? 'fa-IR-u-nu-latn' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' }).format(now);
+    const ev = Jalali.eventOf(j.jy, j.jm, j.jd);
+    const badge = card.querySelector('#cal-off-badge');
+    const evBox = card.querySelector('#cal-ev');
+    if (ev) {
+      badge.textContent = '🔴 ' + I18n.t('cal_off');
+      evBox.innerHTML = '<span class="cal-ev-name off">' + ev.name + '</span>';
+    } else {
+      badge.textContent = '';
+      evBox.innerHTML = '<span class="cal-ev-name muted">' + I18n.t('cal_none') + '</span>';
+    }
+    const next = Jalali.nextHolidays(3);
+    card.querySelector('#cal-next').innerHTML = next.length
+      ? '<div class="cal-next-title">' + I18n.t('cal_upcoming') + '</div>' + next.map(h => {
+        const hj = h.j;
+        return '<div class="cal-next-row"><span class="cal-next-date">' + Jalali.fmt(h.date) + '</span><span class="cal-next-name">' + h.name + '</span></div>';
+      }).join('')
+      : '';
   },
 
   /* ---------- clock ---------- */

@@ -5,6 +5,7 @@ const App = {
     await Store.load();
     I18n.lang = Store.state.settings.lang || 'fa';
     Wallpapers.init();
+    Wallpapers.rotate(); /* auto wallpaper rotation (if enabled) */
     Wallpapers.apply();
     this.applyLang();
     this.applyFont();
@@ -12,6 +13,13 @@ const App = {
     this.streak();
     this.beat();
     setInterval(() => this.beat(), 300000);
+    /* remote feature flags → may hide widgets/panels; re-render when they land */
+    Api.flags().then(f => {
+      window.FLAGS = f || {};
+      this.applyFlags();
+      Widgets.renderAll();
+    });
+    this.checkUpdate();
     Widgets.renderAll();
     Social.renderDrawers();
     this.bindUI();
@@ -58,6 +66,46 @@ const App = {
     const s = Store.state.settings;
     if (!s.uid) Store.setSettings({ uid: (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now()) });
     fetch(API_BASE + '/api/beat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ uid: Store.state.settings.uid }) }).catch(() => { });
+  },
+
+  /* ---------- update check ---------- */
+  semver(v) { return String(v || '0').split('.').map(x => parseInt(x, 10) || 0); },
+  isNewer(a, b) {
+    const x = this.semver(a), y = this.semver(b);
+    for (let i = 0; i < 3; i++) { if ((x[i] || 0) > (y[i] || 0)) return true; if ((x[i] || 0) < (y[i] || 0)) return false; }
+    return false;
+  },
+  async checkUpdate() {
+    try {
+      let cur = '0.0.0';
+      try { cur = chrome.runtime.getManifest().version; } catch { }
+      const d = await Api.latestVersion();
+      if (!d || !d.ok || !d.version || !this.isNewer(d.version, cur)) return;
+      const s = Store.state.settings;
+      if (s.updDismissed === d.tag) return;
+      const b = document.createElement('div');
+      b.className = 'announce gold upd-banner';
+      b.innerHTML = '';
+      const msg = document.createElement('span');
+      msg.textContent = '🎉 ' + I18n.t('upd_new') + ' (v' + d.version + ')';
+      const dl = document.createElement('a');
+      dl.className = 'btn primary sm upd-dl'; dl.href = d.url || (API_BASE + '/download'); dl.target = '_blank'; dl.rel = 'noopener';
+      dl.textContent = I18n.t('upd_dl');
+      const later = document.createElement('button');
+      later.className = 'btn sm upd-later'; later.textContent = I18n.t('upd_later');
+      later.onclick = () => { Store.setSettings({ updDismissed: d.tag }); b.remove(); };
+      const x = document.createElement('button'); x.className = 'ann-x'; x.textContent = '✕'; x.onclick = () => b.remove();
+      b.append(msg, dl, later, x);
+      document.body.prepend(b);
+    } catch (e) { /* offline */ }
+  },
+
+  /* ---------- remote feature flags ---------- */
+  applyFlags() {
+    const F = window.FLAGS || {};
+    const hide = (id, off) => { const d = document.getElementById(id); if (d) d.style.display = off ? 'none' : ''; };
+    hide('dock-friends', F.chat === false);
+    hide('dock-wallpapers', F.wallpapers === false);
   },
 
   /* ---------- command palette ---------- */
