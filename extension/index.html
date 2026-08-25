@@ -47,6 +47,8 @@
 <!-- dock -->
 <nav id="dock" class="glass">
   <button id="dock-search" class="dock-btn" title=""><span>🔍</span><i data-i18n="engines"></i></button>
+  <button id="dock-fal" class="dock-btn" title=""><span>📜</span><i data-i18n="dock_fal"></i></button>
+  <button id="dock-pray" class="dock-btn" title=""><span>🕌</span><i data-i18n="dock_pray"></i></button>
   <button id="dock-wallpapers" class="dock-btn" title=""><span>🖼️</span><i data-i18n="wallpapers"></i></button>
   <button id="dock-bookmarks" class="dock-btn" title=""><span>🔖</span><i data-i18n="widget_bookmarks"></i></button>
   <button id="dock-friends" class="dock-btn" title=""><span>💬</span><i data-i18n="friends"></i></button>
@@ -173,6 +175,24 @@
   <div class="panel-body" id="events-body"></div>
 </aside>
 
+<!-- ============ PANEL: FALL-E HAFEZ ============ -->
+<aside class="panel" id="panel-fal">
+  <div class="panel-head"><h2>📜 فال حافظ</h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="fal-body"></div>
+</aside>
+
+<!-- ============ PANEL: PRAYER TIMES + QIBLA ============ -->
+<aside class="panel" id="panel-pray">
+  <div class="panel-head"><h2 data-i18n="pray_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="pray-body"></div>
+</aside>
+
+<!-- ============ PANEL: CITY PICKER ============ -->
+<aside class="panel" id="panel-city">
+  <div class="panel-head"><h2 data-i18n="city_title"></h2><button class="panel-close icon-btn">✕</button></div>
+  <div class="panel-body" id="city-body"></div>
+</aside>
+
 <!-- avatar picker overlay -->
 <div id="avatar-overlay">
   <div class="ao-bg"><span></span><span></span><span></span></div>
@@ -226,6 +246,9 @@
 <script src="js/wallpapers.js"></script>
 <script src="js/ext-wallpapers.js"></script>
 <script src="js/calendar.js"></script>
+<script src="js/praytimes.js"></script>
+<script src="js/hafez.js"></script>
+<script src="js/blocker.js"></script>
 <script src="js/widgets.js"></script>
 <script src="js/search.js"></script>
 <script src="js/social.js"></script>

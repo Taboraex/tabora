@@ -108,7 +108,7 @@ const Widgets = {
   /* remote feature flags (window.FLAGS fetched from /api/flags) */
   flagOff(widgetId) {
     const F = window.FLAGS || {};
-    const map = { weather: 'weather', prices: 'prices', quote: 'quotes' };
+    const map = { weather: 'weather', prices: 'prices', quote: 'quotes', fal: 'fal', pray: 'pray' };
     const k = map[widgetId];
     return k && F[k] === false;
   },
@@ -159,7 +159,7 @@ const Widgets = {
     this.renderQuote();
     this.renderFocus();
     this.renderTodo();
-    if (window.I18n) I18n.applyLang(I18n.lang);
+    if (typeof I18n !== 'undefined') I18n.applyLang(I18n.lang);
   },
 
   /* keep widgets docked at the bottom: always one row — fluid width, scroll only if screen is too narrow */
@@ -169,10 +169,10 @@ const Widgets = {
     const avail = row.clientWidth, need = row.scrollWidth;
     const sb = document.querySelector('.searchbar');
     const sbBottom = sb ? sb.getBoundingClientRect().bottom : innerHeight * .45;
-    const roomH = innerHeight - 120 - sbBottom;               /* 108 dock offset + breathing room */
+    const roomH = innerHeight - 112 - sbBottom;               /* 108 dock offset + breathing room */
     let sc = Store.state.settings.scale || 1;
     sc = need > avail + 2 ? Math.min(sc, 1) : Math.min(sc, (avail + 2) / need);
-    if (row.offsetHeight > roomH) sc = Math.min(sc, Math.max(.8, roomH / row.offsetHeight));
+    if (row.offsetHeight > roomH) sc = Math.min(sc, Math.max(.76, roomH / row.offsetHeight));
     row.style.transform = `scale(${sc})`;
     row.classList.toggle('of', need * sc > avail + 2);
   },
@@ -188,11 +188,13 @@ const Widgets = {
           <div class="cal-side"><b id="cal-month"></b><span id="cal-greg" class="muted"></span></div></div>
         <div class="cal-ev" id="cal-ev"></div>
         <div class="cal-my" id="cal-my"></div>
+        <div class="cal-pray" id="cal-pray" style="display:none"></div>
         <div class="cal-next" id="cal-next"></div>`;
       card.querySelector('.bm-add').onclick = () => Panels.openEvents();
     } else if (id === 'weather') {
       card.id = 'w-weather';
-      card.innerHTML = `<div class="w-title"><span>🌤️</span><b data-i18n="widget_weather"></b></div><div class="wx-scene"></div><div class="wx-body"><div class="wx-temp">--°</div><div class="wx-meta"></div></div>`;
+      card.innerHTML = `<div class="w-title"><span>🌤️</span><b data-i18n="widget_weather"></b><button class="bm-add" id="wx-city-btn" title="${I18n.t('city_title')}">📍</button></div><div class="wx-scene"></div><div class="wx-body"><div class="wx-temp">--°</div><div class="wx-meta"></div></div><div class="wx-days" id="wx-days"></div>`;
+      card.querySelector('#wx-city-btn').onclick = () => Panels.open('panel-city');
     } else if (id === 'prices') {
       card.id = 'w-prices';
       card.innerHTML = `<div class="w-title"><span>💱</span><b data-i18n="widget_prices"></b><span class="w-badge" data-i18n="toman"></span></div><div class="pr-list"><div class="pr-loading" data-i18n="loading"></div></div>`;
@@ -205,7 +207,7 @@ const Widgets = {
       card.innerHTML = `<div class="w-title"><span>💫</span><b data-i18n="widget_quote"></b></div><div class="q-text"></div>`;
     } else if (id === 'focus') {
       card.id = 'w-focus';
-      card.innerHTML = `<div class="w-title"><span>⏱️</span><b data-i18n="widget_focus"></b><span class="w-badge" id="fz-mode"></span></div>
+      card.innerHTML = `<div class="w-title"><span>⏱️</span><b data-i18n="widget_focus"></b><span class="w-badge" id="fz-mode"></span><span class="w-badge" id="fz-block" style="display:none">🔒</span></div>
         <div class="fz-wrap"><svg viewBox="0 0 100 100" class="fz-ring"><circle cx="50" cy="50" r="42" class="fz-bg"/><circle cx="50" cy="50" r="42" class="fz-fg" id="fz-fg"/></svg>
         <div class="fz-mid"><b id="fz-time" dir="ltr">25:00</b><small id="fz-st"></small></div></div>
         <div class="fz-btns"><button id="fz-go" class="btn primary sm"></button><button id="fz-re" class="btn sm" title="↺">↺</button></div>`;
@@ -264,6 +266,18 @@ const Widgets = {
           '<div class="cal-next-row"><span class="cal-next-date">' + Jalali.fmt(u.date) + '</span><span class="cal-next-name">' +
           (u.kind === 'off' ? '🔴 ' : '📌 ') + String(u.name).replace(/</g, '&lt;') + '</span></div>').join('')
       : '';
+    /* next prayer line (feature-flagged) */
+    const pl = card.querySelector('#cal-pray');
+    if (pl) {
+      if (typeof Pray !== 'undefined' && !this.flagOff('pray')) {
+        try {
+          const nx = Pray.next();
+          const mins = I18n.lang === 'fa' ? Jalali.toFaDigits(String(nx.inMin)) : String(nx.inMin);
+          pl.innerHTML = '🕌 ' + nx.name + ' · <b>' + Pray.fmt(nx.time) + '</b> <small>(' + mins + ' ' + I18n.t('min_later') + ')</small>';
+          pl.style.display = '';
+        } catch { pl.style.display = 'none'; }
+      } else pl.style.display = 'none';
+    }
   },
 
   myEvents() { return Store.state.settings.events || []; },
@@ -298,7 +312,13 @@ const Widgets = {
     const scene = document.querySelector('#w-weather .wx-scene');
     if (!scene) return;
     try {
-      let loc = Store.state.cache.loc;
+      const sc = Store.state.settings.city;
+      let loc;
+      if (sc && sc.n && sc.la != null) {
+        loc = { lat: sc.la, lon: sc.lo, name: sc.n, t: Date.now() };
+      } else {
+        loc = Store.state.cache.loc;
+      }
       if (!loc || Date.now() - loc.t > 3600000) {
         loc = await new Promise((res) => {
           let done = false;
@@ -315,7 +335,7 @@ const Widgets = {
         Store.state.cache.loc = loc;
         Store.persist(['cache']);
       }
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=1`;
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${loc.lat}&longitude=${loc.lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=4`;
       const r = await fetch(url);
       const d = await r.json();
       const cur = d.current, daily = d.daily;
@@ -328,9 +348,34 @@ const Widgets = {
         `<div class="wx-city">${loc.name || ''}</div>
          <div class="wx-sub">${I18n.t('feels')}: ${conv(cur.apparent_temperature)}${unit} · ${I18n.t('humidity')} ${fmtNum(cur.relative_humidity_2m)}٪</div>
          <div class="wx-sub">${I18n.t('high_low')}: ${conv(daily.temperature_2m_max[0])}° / ${conv(daily.temperature_2m_min[0])}°</div>`;
+      this.renderWxDays(daily);
     } catch (e) {
       scene.innerHTML = '<div class="wx-err">⛅</div>';
     }
+  },
+
+  wxIcon(code) {
+    const m = { 0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 53: '🌦️', 55: '🌦️', 56: '🌨️', 57: '🌨️', 61: '🌧️', 63: '🌧️', 65: '🌧️', 66: '🌨️', 67: '🌨️', 71: '🌨️', 73: '❄️', 75: '❄️', 77: '🌨️', 80: '🌦️', 81: '🌧️', 82: '🌧️', 85: '🌨️', 86: '❄️', 95: '⛈️', 96: '⛈️', 99: '⛈️' };
+    return m[code] || '🌤️';
+  },
+
+  renderWxDays(daily) {
+    const box = document.getElementById('wx-days');
+    if (!box || !daily || !daily.time) return;
+    const fa = I18n.lang === 'fa';
+    const conv = (c) => Store.state.settings.tempUnit === 'f' ? Math.round(c * 9 / 5 + 32) : Math.round(c);
+    const names = [];
+    for (let i = 0; i < Math.min(4, daily.time.length); i++) {
+      if (i === 0) names.push(I18n.t('wx_today'));
+      else if (i === 1) names.push(I18n.t('wx_tomorrow'));
+      else {
+        const d = new Date(daily.time[i] + 'T12:00:00');
+        names.push(d.toLocaleDateString(fa ? 'fa-IR' : 'en-US', { weekday: 'short' }));
+      }
+    }
+    box.innerHTML = daily.time.slice(0, 4).map((t, i) =>
+      `<div class="wx-d${i === 0 ? ' now' : ''}"><span class="wx-dn">${names[i]}</span><span class="wx-di">${this.wxIcon(daily.weather_code[i])}</span><span class="wx-dt">${conv(daily.temperature_2m_max[i])}° <i>${conv(daily.temperature_2m_min[i])}°</i></span></div>`
+    ).join('');
   },
 
   paintScene(scene, code, day) {
@@ -450,10 +495,12 @@ const Widgets = {
     go.onclick = () => {
       f.run = !f.run;
       if (f.run && !this.fzTimer) this.fzTick();
+      if (Blocker) Blocker.apply();
       this.renderFocus();
     };
     card.querySelector('#fz-re').onclick = () => {
       f.left = f.total; f.run = false;
+      if (Blocker) Blocker.apply();
       this.renderFocus();
     };
     clearInterval(this.fzTimer);
@@ -470,6 +517,7 @@ const Widgets = {
       f.mode = wasWork ? 'break' : 'work';
       f.total = f.mode === 'work' ? 1500 : 300;
       f.left = f.total;
+      if (Blocker) Blocker.apply();
       showToast(wasWork ? '☕ ' + I18n.t('focus_break') : '🎯 ' + I18n.t('focus_work'), 2600);
     }
     this.fzPaint();

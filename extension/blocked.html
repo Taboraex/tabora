@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تبورا — مسدود شد 🧘</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    font-family: 'Vazirmatn', system-ui, sans-serif; text-align: center;
+    background: radial-gradient(1200px 600px at 70% -10%, #1e2b6e33, transparent), #070b1e; color: #e8ecff;
+  }
+  .box { max-width: 460px; padding: 48px 36px; }
+  .shield { font-size: 74px; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 50% { transform: translateY(-10px); } }
+  h1 { font-size: 1.6rem; margin: 18px 0 10px; }
+  p { color: #93a0c8; line-height: 2; font-size: .92rem; }
+  .dom {
+    display: inline-block; margin: 16px 0; padding: 8px 18px; border-radius: 99px;
+    background: #f8717122; border: 1px solid #f8717155; color: #fca5a5; font-size: .85rem; direction: ltr;
+  }
+  .q { margin: 8px 0 26px; font-size: 1rem; color: #cdd6ff; }
+  button {
+    font-family: inherit; cursor: pointer; border: none; border-radius: 14px;
+    padding: 13px 30px; font-size: .95rem; font-weight: 700;
+    background: linear-gradient(135deg, #22d3ee, #8b5cf6); color: #fff;
+    box-shadow: 0 10px 30px #8b5cf644;
+  }
+  button:hover { filter: brightness(1.1); }
+  small { display: block; margin-top: 18px; color: #5b668c; font-size: .72rem; }
+</style>
+</head>
+<body>
+  <div class="box">
+    <div class="shield">🧘</div>
+    <h1>اینجا فعلاً بسته‌ست!</h1>
+    <div class="dom" id="dom">site</div>
+    <p>این سایت حین <b>حالت فوکوس</b> تبورا مسدود شده تا ذهنت با کارت بمونه ✨</p>
+    <div class="q">«توانا بود هر که دانا بود» — فردوسی</div>
+    <button onclick="location.href=(window.chrome&&chrome.runtime?chrome.runtime.getURL('index.html'):'index.html')">🏠 برگرد به تبورا</button>
+    <small>Tabora — Smart New Tab</small>
+  </div>
+  <script>
+    try {
+      const d = new URLSearchParams(location.search).get('d');
+      if (d) document.getElementById('dom').textContent = d;
+    } catch (e) {}
+  </script>
+</body>
+</html>

@@ -22,6 +22,8 @@ const Panels = {
     if (id === 'panel-support') this.renderSupport();
     if (id === 'panel-settings') this.renderSettings();
     if (id === 'panel-events') this.renderEventsManager();
+    if (id === 'panel-pray') this.renderPray();
+    if (id === 'panel-city') this.renderCity();
   },
   closeAll() {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('open'));
@@ -696,6 +698,104 @@ const Panels = {
     };
   },
 
+  /* ================= PRAYER TIMES + QIBLA ================= */
+  renderPray() {
+    const body = document.getElementById('pray-body');
+    if (!body || typeof Pray === 'undefined') return;
+    const fa = I18n.lang === 'fa';
+    const num = (x) => fa ? Jalali.toFaDigits(String(x)) : String(x);
+    const c = Pray.city();
+    const t = Pray.times(c.lat, c.lng, new Date());
+    const nx = Pray.next();
+    const q = Pray.qibla(c.lat, c.lng);
+    const rows = [
+      ['fajr', 'pray_fajr', '🌅', t.fajr], ['sunrise', 'pray_sunrise', '🌄', t.sunrise],
+      ['dhuhr', 'pray_dhuhr', '☀️', t.dhuhr], ['asr', 'pray_asr', '🌤️', t.asr],
+      ['maghrib', 'pray_maghrib', '🌇', t.maghrib], ['isha', 'pray_isha', '🌙', t.isha]
+    ];
+    let marks = '';
+    for (let a = 0; a < 360; a += 15) {
+      const r1 = a % 90 === 0 ? 44 : 50, r2 = 54;
+      const rd = (ang) => (ang - 90) * Math.PI / 180;
+      marks += `<line x1="${60 + r1 * Math.cos(rd(a))}" y1="${60 + r1 * Math.sin(rd(a))}" x2="${60 + r2 * Math.cos(rd(a))}" y2="${60 + r2 * Math.sin(rd(a))}" class="pt-tick${a % 90 === 0 ? ' big' : ''}"/>`;
+    }
+    body.innerHTML = `
+      <div class="pt-city glass">📍 <b>${c.n}</b><button class="btn sm" id="pt-city-btn">${I18n.t('city_change')}</button></div>
+      <div class="pt-next glass">
+        <div class="pt-next-t">${I18n.t('pray_next')}</div>
+        <div class="pt-next-v">${nx.name} · <b>${Pray.fmt(nx.time)}</b></div>
+        <div class="pt-next-c">${num(nx.inMin)} ${I18n.t('min_later')}</div>
+      </div>
+      <div class="pt-grid">${rows.map(r => `<div class="pt-row${nx.key === r[0] ? ' on' : ''}"><span>${r[2]} ${I18n.t(r[1])}</span><b>${Pray.fmt(r[3])}</b></div>`).join('')}</div>
+      <div class="pt-qibla glass">
+        <div class="sec-label">🧭 ${I18n.t('pray_qibla')}</div>
+        <div class="pt-compass-wrap">
+          <svg viewBox="0 0 120 120" class="pt-compass">
+            <circle cx="60" cy="60" r="56" class="pt-c-bg"/>
+            ${marks}
+            <text x="60" y="14" class="pt-c-n" text-anchor="middle">N</text>
+            <g class="pt-rose" transform="rotate(${q.deg.toFixed(1)} 60 60)">
+              <polygon points="60,18 54,62 60,54 66,62" class="pt-needle"/>
+              <circle cx="60" cy="60" r="4" class="pt-dot"/>
+            </g>
+          </svg>
+          <div class="pt-q-info">
+            <b class="pt-q-deg">${num(Math.round(q.deg))}°</b>
+            <span>${I18n.t('pray_from_north')}</span>
+            <span>📏 ${I18n.t('pray_dist')}: ${num(q.km.toLocaleString(fa ? 'fa-IR' : 'en-US'))} km</span>
+            <span class="muted" style="font-size:.66rem">${I18n.t('pray_qibla_hint')}</span>
+          </div>
+        </div>
+      </div>`;
+    body.querySelector('#pt-city-btn').onclick = () => this.open('panel-city');
+  },
+
+  /* ================= CITY PICKER (weather + prayers) ================= */
+  renderCity() {
+    const body = document.getElementById('city-body');
+    if (!body) return;
+    const fa = I18n.lang === 'fa';
+    const cur = Store.state.settings.city;
+    body.innerHTML = `
+      ${cur ? `<div class="city-cur glass">📍 <b>${cur.n}</b><button class="btn sm danger" id="city-clear">✖ ${I18n.t('city_auto')}</button></div>` : ''}
+      <div class="city-search"><input id="city-q" placeholder="${I18n.t('city_search_ph')}"><button class="btn sm" id="city-go">🔍</button></div>
+      <div id="city-res"></div>
+      <div class="sec-label" style="margin-top:18px">⭐ ${I18n.t('city_quick')}</div>
+      <div class="city-chips">${PRAY_CITIES.slice(0, 16).map(c => `<button class="chip-btn" data-n="${c[fa ? 0 : 1]}" data-la="${c[2]}" data-lo="${c[3]}">${c[fa ? 0 : 1]}</button>`).join('')}</div>
+      <button class="btn" id="city-gps" style="margin-top:18px">📡 ${I18n.t('city_gps')}</button>`;
+    const pick = (n, la, lo) => {
+      Store.setSettings({ city: { n, la, lo } });
+      Widgets.renderWeather();
+      Widgets.renderCalendar();
+      if (typeof Pray !== 'undefined') this.renderPray();
+      showToast('📍 ' + n, 1800);
+      this.renderCity();
+    };
+    body.querySelectorAll('.chip-btn').forEach(b => b.onclick = () => pick(b.dataset.n, +b.dataset.la, +b.dataset.lo));
+    const clr = body.querySelector('#city-clear');
+    if (clr) clr.onclick = () => { Store.setSettings({ city: null }); Widgets.renderWeather(); Widgets.renderCalendar(); this.renderCity(); showToast(I18n.t('city_auto'), 1800); };
+    body.querySelector('#city-gps').onclick = () => {
+      navigator.geolocation.getCurrentPosition(p => pick(I18n.t('my_location'), +p.coords.latitude.toFixed(4), +p.coords.longitude.toFixed(4)), () => showToast(I18n.t('err_generic'), 2000), { timeout: 6000 });
+    };
+    const doSearch = async () => {
+      const q = body.querySelector('#city-q').value.trim();
+      const res = body.querySelector('#city-res');
+      if (!q) return;
+      res.innerHTML = '<div class="muted">⏳</div>';
+      try {
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=${fa ? 'fa' : 'en'}`);
+        const d = await r.json();
+        res.innerHTML = (d.results || []).map((c, i) => `<button class="city-res-row" data-i="${i}"><b>${c.name}</b><span class="muted">${[c.admin1, c.country].filter(Boolean).join(' · ')}</span></button>`).join('') || `<div class="muted">${I18n.t('city_none')}</div>`;
+        res.querySelectorAll('.city-res-row').forEach(b => b.onclick = () => {
+          const c = d.results[+b.dataset.i];
+          pick(c.name, +c.latitude, +c.longitude);
+        });
+      } catch { res.innerHTML = `<div class="muted">${I18n.t('err_generic')}</div>`; }
+    };
+    body.querySelector('#city-go').onclick = doSearch;
+    body.querySelector('#city-q').onkeydown = (e) => { if (e.key === 'Enter') doSearch(); };
+  },
+
   /* ================= SETTINGS ================= */
   renderSettings() {
     const s = Store.state.settings;
@@ -739,6 +839,16 @@ const Panels = {
       <div class="sec-label">🖼️ ${I18n.t('set_wallpaper')}</div>
       <button class="btn" id="set-wp">🎨 ${I18n.t('change_wallpaper')}</button>
     </div>
+    ${(window.FLAGS || {}).blocker === false ? '' : `
+    <div class="set-sec glass">
+      <div class="sec-label">🚫 ${I18n.t('set_blocker')} <small class="muted">(${I18n.t('block_hint')})</small></div>
+      <div class="td-add"><input id="blk-in" placeholder="instagram.com" dir="ltr"><button id="blk-add">+</button></div>
+      <div class="seg" style="margin-top:10px">
+        <button data-bm="focus" class="${(s.blockMode || 'focus') === 'focus' ? 'active' : ''}">⏱️ ${I18n.t('block_mode_focus')}</button>
+        <button data-bm="always" class="${s.blockMode === 'always' ? 'active' : ''}">🔒 ${I18n.t('block_always')}</button>
+      </div>
+      <div class="blk-chips" id="blk-chips"></div>
+    </div>`}
     <div class="set-sec glass">
       <div class="sec-label">💾 ${I18n.t('set_backup').replace('📦 ', '')}</div>
       <div class="row-btns">
@@ -820,6 +930,35 @@ const Panels = {
       acr.querySelectorAll('.ac-dot').forEach(d => d.onclick = () => { Store.setSettings({ accent: d.dataset.ac }); App.applyAccent(); this.renderSettings(); });
     }
     box.querySelector('#set-wp').onclick = () => this.open('panel-wallpapers');
+    /* site blocker */
+    const blkChips = () => {
+      const chips = box.querySelector('#blk-chips');
+      if (!chips) return;
+      const l = Blocker ? Blocker.list() : [];
+      chips.innerHTML = l.length
+        ? l.map(d => `<span class="blk-chip">${d} <b data-del="${d}">✕</b></span>`).join('')
+        : `<div class="muted" style="font-size:.72rem">${I18n.t('block_none')}</div>`;
+      chips.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { Blocker.remove(b.dataset.del); blkChips(); });
+      const bd = document.getElementById('fz-block');
+      if (bd && Blocker) bd.style.display = Blocker.active() && Blocker.focusOn() ? '' : 'none';
+    };
+    const blkAdd = box.querySelector('#blk-add');
+    if (blkAdd) {
+      blkChips();
+      blkAdd.onclick = () => {
+        const r = Blocker.add(box.querySelector('#blk-in').value);
+        if (r.err) showToast(I18n.t(r.err), 2200);
+        else { box.querySelector('#blk-in').value = ''; showToast('🚫 ' + r.dom, 1800); }
+        blkChips();
+      };
+      box.querySelector('#blk-in').onkeydown = (e) => { if (e.key === 'Enter') blkAdd.onclick(); };
+      box.querySelectorAll('[data-bm]').forEach(b => b.onclick = () => {
+        Blocker.setMode(b.dataset.bm);
+        box.querySelectorAll('[data-bm]').forEach(x => x.classList.toggle('active', x === b));
+        blkChips();
+        showToast(b.dataset.bm === 'always' ? '🔒 ' + I18n.t('block_always') : '⏱️ ' + I18n.t('block_mode_focus'), 1800);
+      });
+    }
     const sy = box.querySelector('#set-sync');
     if (sy) sy.onclick = async () => { await Api.pullCloud(); Widgets.renderAll(); showToast(I18n.t('cloud_synced')); };
     const lo = box.querySelector('#set-logout'); if (lo) lo.onclick = () => this.doLogout();

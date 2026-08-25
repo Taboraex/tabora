@@ -106,6 +106,9 @@ const App = {
     const hide = (id, off) => { const d = document.getElementById(id); if (d) d.style.display = off ? 'none' : ''; };
     hide('dock-friends', F.chat === false);
     hide('dock-wallpapers', F.wallpapers === false);
+    hide('dock-fal', F.fal === false);
+    hide('dock-pray', F.pray === false);
+    if (Blocker) Blocker.apply();
   },
 
   /* ---------- command palette ---------- */
@@ -128,6 +131,9 @@ const App = {
       ['⏱️ ' + I18n.t('xk_focus'), () => { const f = Widgets.fzState(); f.run = !f.run; Widgets.renderFocus(); }],
       ['🔖 ' + I18n.t('xk_bm'), () => Panels.openBookmarks()],
       ['📅 ' + I18n.t('xk_events'), () => Panels.openEvents()],
+      ['📜 ' + I18n.t('xk_fal'), () => Hafez.open()],
+      ['🕌 ' + I18n.t('xk_pray'), () => Panels.open('panel-pray')],
+      ['📍 ' + I18n.t('xk_city'), () => Panels.open('panel-city')],
       ['🎨 ' + I18n.t('xk_accent'), () => { const ids = Object.keys(ACCENTS); const cur = ids.indexOf(Store.state.settings.accent || 'cyan'); Store.setSettings({ accent: ids[(cur + 1) % ids.length] }); this.applyAccent(); }]
     ];
     return q ? out.filter(c => c[0].includes(q)) : out;
@@ -180,6 +186,8 @@ const App = {
 
     /* dock */
     document.getElementById('dock-search').onclick = () => Search.open();
+    document.getElementById('dock-fal').onclick = () => Hafez.open();
+    document.getElementById('dock-pray').onclick = () => Panels.open('panel-pray');
     document.getElementById('dock-wallpapers').onclick = () => Panels.open('panel-wallpapers');
     document.getElementById('dock-bookmarks').onclick = () => Panels.openBookmarks();
     document.getElementById('dock-friends').onclick = () => Panels.open('panel-friends');

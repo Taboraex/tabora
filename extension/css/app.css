@@ -706,3 +706,88 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
 .ev-row .ev-date { font-size: .68rem; color: var(--accent); white-space: nowrap; min-width: 96px; }
 .ev-row .ev-name { flex: 1; font-size: .84rem; font-weight: 500; }
 .ev-row.past { opacity: .45; }
+
+/* ===== Fall-e Hafez 📜 ===== */
+@keyframes float { 50% { transform: translateY(-10px); } }
+.fal-intro { text-align: center; padding: 46px 10px; }
+.fal-book { font-size: 74px; animation: float 3s ease-in-out infinite; }
+.fal-sub { color: var(--muted); margin: 14px auto 26px; max-width: 330px; line-height: 2.1; font-size: .9rem; }
+.fal-card { text-align: center; padding: 10px 4px; }
+.fal-head { display: flex; align-items: center; justify-content: center; gap: 12px; color: #fbbf24; font-size: 1.05rem; margin-bottom: 18px; }
+.fal-head b { color: var(--text); font-size: 1.1rem; }
+.fal-orn { color: #fbbf24; animation: glow 2.4s infinite; }
+@keyframes glow { 50% { opacity: .4; text-shadow: 0 0 14px #fbbf2488; } }
+.fal-shuffle { font-size: 56px; margin: 26px auto; width: 92px; height: 92px; display: grid; place-items: center; }
+.fal-poem { font-family: 'Lalezar', 'Vazirmatn', sans-serif; font-size: 1.28rem; line-height: 2.3; color: #f4ecd8;
+  background: linear-gradient(160deg, rgba(251,191,36,.07), rgba(139,92,246,.06)); border: 1px solid rgba(251,191,36,.22);
+  border-radius: 20px; padding: 22px 18px; box-shadow: 0 10px 40px rgba(0,0,0,.3), inset 0 0 60px rgba(251,191,36,.04); }
+.fal-verse { margin: 2px 0; }
+.fal-reveal { animation: fal-in .8s cubic-bezier(.2,.9,.3,1.1) both; }
+@keyframes fal-in { from { opacity: 0; transform: translateY(18px); filter: blur(6px); } }
+.fal-interp { margin-top: 16px; padding: 16px 18px; text-align: start; border-radius: 16px; }
+.fal-interp-t { color: #fbbf24; font-size: .85rem; font-weight: 700; margin-bottom: 8px; }
+.fal-interp-b { font-size: .86rem; line-height: 2.1; color: var(--text); }
+.fal-btns { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+.fal-err { text-align: center; font-size: 42px; padding: 60px 0; }
+
+/* ===== prayer times + qibla 🕌 ===== */
+.pt-city { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 14px; margin-bottom: 12px; font-size: .95rem; }
+.pt-city .btn { margin-inline-start: auto; }
+.pt-next { text-align: center; padding: 18px; border-radius: 16px; margin-bottom: 12px;
+  background: linear-gradient(140deg, rgba(52,211,153,.12), rgba(34,211,238,.08)); border: 1px solid rgba(52,211,153,.3); }
+.pt-next-t { font-size: .74rem; color: var(--muted); }
+.pt-next-v { font-size: 1.5rem; font-weight: 900; margin: 6px 0 4px; }
+.pt-next-v b { color: #34d399; }
+.pt-next-c { font-size: .8rem; color: var(--accent); }
+.pt-grid { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; }
+.pt-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-radius: 12px;
+  background: rgba(255,255,255,.045); font-size: .88rem; }
+.pt-row b { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.pt-row.on { background: linear-gradient(90deg, rgba(52,211,153,.16), rgba(34,211,238,.1)); border: 1px solid rgba(52,211,153,.4); }
+.pt-row.on b { color: #34d399; }
+.pt-qibla { padding: 16px 18px; border-radius: 16px; }
+.pt-compass-wrap { display: flex; gap: 20px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.pt-compass { width: 150px; height: 150px; flex: none; }
+.pt-c-bg { fill: rgba(255,255,255,.04); stroke: rgba(255,255,255,.16); stroke-width: 1.5; }
+.pt-tick { stroke: rgba(255,255,255,.16); stroke-width: 1; }
+.pt-tick.big { stroke: rgba(255,255,255,.4); stroke-width: 2; }
+.pt-c-n { fill: #f87171; font-size: 9px; font-weight: 800; }
+.pt-needle { fill: url(#ptGrad), #34d399; filter: drop-shadow(0 0 6px rgba(52,211,153,.6)); }
+.pt-dot { fill: var(--text); }
+.pt-q-info { display: flex; flex-direction: column; gap: 6px; font-size: .8rem; color: var(--muted); }
+.pt-q-deg { font-size: 2rem; color: #34d399; font-weight: 900; }
+
+/* ===== city picker 📍 ===== */
+.city-cur { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: 14px; margin-bottom: 12px; }
+.city-cur .btn { margin-inline-start: auto; }
+.city-search { display: flex; gap: 8px; }
+.city-search input { flex: 1; background: rgba(255,255,255,.06); border: 1px solid var(--glass-border); border-radius: 12px; padding: 11px 14px; color: var(--text); outline: none; }
+.city-search input:focus { border-color: var(--accent); }
+.city-res-row { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 11px 14px; margin-top: 7px; border-radius: 12px;
+  background: rgba(255,255,255,.045); cursor: pointer; transition: .2s; text-align: start; }
+.city-res-row:hover { background: var(--accent-soft); }
+.city-res-row b { font-size: .9rem; }
+.city-res-row span { font-size: .72rem; }
+.city-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.chip-btn { padding: 8px 16px; border-radius: 99px; background: rgba(255,255,255,.05); border: 1px solid var(--glass-border); font-size: .8rem; transition: .2s; }
+.chip-btn:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+/* ===== weather 3-day forecast ===== */
+.wx-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 12px; }
+.wx-d { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 2px 6px; border-radius: 11px; background: rgba(255,255,255,.04); }
+.wx-d.now { background: var(--accent-soft); border: 1px solid var(--accent-glow); }
+.wx-dn { font-size: .62rem; color: var(--muted); }
+.wx-di { font-size: 1.05rem; }
+.wx-dt { font-size: .7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.wx-dt i { font-style: normal; opacity: .5; font-weight: 400; }
+
+/* ===== calendar next-prayer line ===== */
+.cal-pray { border-top: 1px dashed rgba(255,255,255,.1); margin-top: 8px; padding-top: 8px; font-size: .72rem; color: #34d399; }
+.cal-pray b { font-variant-numeric: tabular-nums; }
+.cal-pray small { opacity: .65; }
+
+/* ===== site blocker chips ===== */
+.blk-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.blk-chip { direction: ltr; padding: 6px 12px; border-radius: 99px; font-size: .74rem; background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.3); color: #fca5a5; }
+.blk-chip b { cursor: pointer; color: #f87171; margin-inline-start: 4px; }
+.blk-chip b:hover { color: #fff; }
