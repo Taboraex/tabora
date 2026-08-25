@@ -162,7 +162,7 @@ const Widgets = {
     if (typeof I18n !== 'undefined') I18n.applyLang(I18n.lang);
   },
 
-  /* keep widgets docked at the bottom: always one row — fluid width, scroll only if screen is too narrow */
+  /* keep widgets docked at the bottom: always one row — user scale wins, scroll if it overflows */
   fitRow() {
     const row = document.getElementById('widgets-row');
     if (!row || !row.children.length) return;
@@ -171,8 +171,7 @@ const Widgets = {
     const sbBottom = sb ? sb.getBoundingClientRect().bottom : innerHeight * .45;
     const roomH = innerHeight - 112 - sbBottom;               /* 108 dock offset + breathing room */
     let sc = Store.state.settings.scale || 1;
-    sc = need > avail + 2 ? Math.min(sc, 1) : Math.min(sc, (avail + 2) / need);
-    if (row.offsetHeight > roomH) sc = Math.min(sc, Math.max(.76, roomH / row.offsetHeight));
+    if (row.offsetHeight * sc > roomH) sc = Math.min(sc, Math.max(.76, roomH / row.offsetHeight));  /* only guard: never collide with the clock */
     row.style.transform = `scale(${sc})`;
     row.classList.toggle('of', need * sc > avail + 2);
   },
@@ -431,12 +430,21 @@ const Widgets = {
     try {
       const d = await Api.prices();
       const pick = ['price_dollar_rl', 'price_eur', 'price_gbp', 'price_aed', 'price_try', 'price_gold_18', 'price_coin_new'];
+      const names = {
+        price_dollar_rl: ['دلار آمریکا', 'US Dollar'], price_eur: ['یورو', 'Euro'],
+        price_gbp: ['پوند انگلیس', 'British Pound'], price_aed: ['درهم امارات', 'UAE Dirham'],
+        price_try: ['لیر ترکیه', 'Turkish Lira'], price_gold_18: ['طلای ۱۸ عیار', 'Gold 18K'],
+        price_coin_new: ['سکه امامی', 'Emami Coin']
+      };
       const items = (d.items || []).filter(i => pick.includes(i.key));
-      list.innerHTML = items.map(i => `
+      list.innerHTML = items.map(i => {
+        const nm = (names[i.key] || [i.title, i.title])[I18n.lang === 'fa' ? 0 : 1];
+        return `
         <div class="pr-row">
-          <span class="pr-name">${i.title}</span>
+          <span class="pr-name">${nm}</span>
           <span class="pr-val">${fmtNum(i.toman)} <small data-i18n="toman">${I18n.t('toman')}</small></span>
-        </div>`).join('') || `<div class="pr-loading">${I18n.t('err_generic')}</div>`;
+        </div>`;
+      }).join('') || `<div class="pr-loading">${I18n.t('err_generic')}</div>`;
       list.insertAdjacentHTML('beforeend', `<div class="pr-src">${I18n.t('prices_src')}</div>`);
     } catch (e) {
       list.innerHTML = `<div class="pr-loading">${I18n.t('err_generic')}</div>`;

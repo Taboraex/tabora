@@ -874,8 +874,8 @@ const Panels = {
     box.querySelector('#set-scale').oninput = (e) => {
       const v = +e.target.value;
       document.getElementById('scale-val').textContent = Math.round(v * 100) + '%';
-      document.getElementById('widgets-row').style.transform = `scale(${v})`;
       Store.setSettings({ scale: v });
+      if (typeof Widgets !== 'undefined') Widgets.fitRow();
     };
     box.querySelector('#set-clock24').onchange = (e) => { Store.setSettings({ clock24: e.target.checked }); Widgets.renderClock(); };
     box.querySelector('#set-temp').onchange = (e) => { Store.setSettings({ tempUnit: e.target.value }); Widgets.renderWeather(); };

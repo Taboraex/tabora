@@ -14,8 +14,13 @@
   "chrome_url_overrides": {
     "newtab": "index.html"
   },
-  "permissions": ["storage", "declarativeNetRequest"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "declarative_net_request": {
     "rule_resources": [
       {
@@ -27,8 +32,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["blocked.html"],
-      "matches": ["<all_urls>"]
+      "resources": [
+        "blocked.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
-  ]
+  ],
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsE6YxcJ5WUNShwYGnQ+DS3wRV6UsjC3ID+pW/FP7Kai7bYdfp5BKTFX4nBZlqA/uZJItOuylOD+zI6VMRAh3Wbr2BJNeLg15YIwK0g8nalNCYRVqEdMcX4Nwto5nlpbP27CeeInzV9YvqU7KZQUPhxgrdJVqICZbDJsPbt9RABFHM2HeZlPjlwGwxjyMHWGIseGfYDihZ3+gx6U9n5y3Oq5rjduQDnTAjERLibQvgerr3x3NGOklyBjn6rNf6pDKZ2B5h2b7LuRy/pY1KnfpxM1m9jZwGPn2rc1Cb2Ke7IT8iYzJ+LFbF2hLZlcWg560Zo7A/eYOisoz++hXvZ5bLwIDAQAB"
 }
