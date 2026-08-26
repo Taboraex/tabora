@@ -118,8 +118,9 @@ input, textarea, select { font-family: inherit; }
 }
 #widgets-row {
   display: flex; gap: 16px; align-items: stretch; flex-wrap: nowrap; justify-content: center;
+  flex: 0 0 auto;
   transform-origin: bottom center; transition: transform .25s;
-  max-width: 100%; overflow-x: auto; overscroll-behavior-x: contain;
+  overflow-x: auto; overscroll-behavior-x: contain;
   scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 4px;
 }
 #widgets-row::-webkit-scrollbar { display: none; }
@@ -129,10 +130,19 @@ input, textarea, select { font-family: inherit; }
   mask-image: linear-gradient(to left, transparent 0, #000 28px calc(100% - 28px), transparent 100%);
 }
 .widget {
-  width: clamp(196px, calc((100vw - 56px - (var(--wn, 7) - 1) * 16px) / var(--wn, 7)), 300px);
-  flex: 0 0 auto; min-height: 148px; padding: 16px 18px; transition: transform .2s, border-color .2s; position: relative;
+  flex: var(--gw, 1) 1 0;
+  min-width: 165px; max-width: 330px;
+  min-height: 148px; padding: 16px 18px; transition: transform .2s, border-color .2s; position: relative;
   overflow: hidden;
 }
+/* proportional shares — wider cards for content that needs room */
+#w-calendar { --gw: 1.18; }
+#w-weather { --gw: 1.08; }
+#w-prices { --gw: .95; }
+#w-bookmarks { --gw: 1.05; }
+#w-quote { --gw: .88; }
+#w-focus { --gw: .82; }
+#w-todo { --gw: 1.04; }
 .w-in { animation: w-in .5s cubic-bezier(.2,.9,.3,1.2) both; }
 @keyframes w-in { from { opacity: 0; transform: translateY(16px) scale(.95); } }
 .widget::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: radial-gradient(240px circle at var(--mx,50%) var(--my,50%), rgba(139,92,246,.16), transparent 65%); opacity: 0; transition: opacity .3s; pointer-events: none; }
@@ -229,7 +239,7 @@ input, textarea, select { font-family: inherit; }
 .pr-loading { color: var(--muted); font-size: .85rem; padding: 12px 0; text-align: center; }
 
 /* bookmarks widget */
-.bm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.bm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 10px; }
 .bm-tile { display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none; color: var(--text); transition: .2s; }
 .bm-tile:hover { transform: translateY(-3px) scale(1.05); }
 .bm-logo {
@@ -569,7 +579,7 @@ html[dir="ltr"] .switch input:checked + i::after { transform: translateX(20px); 
   #widgets-wrap { bottom: 96px; padding: 0 14px; }
 }
 /* short screens (laptops): lift the clock so widgets never collide with it */
-@media (max-height: 820px) {
+@media (max-height: 900px) {
   #center { top: 4vh; }
   .clock { font-size: clamp(3.4rem, 10vw, 6.5rem); }
   .searchbar { margin-top: 16px; padding: 12px 20px; }

@@ -129,7 +129,6 @@ const Widgets = {
       const w = this.build(id);
       if (w) { w.classList.add('w-in'); w.style.animationDelay = (i++ * 80) + 'ms'; row.appendChild(w); }
     });
-    row.style.setProperty('--wn', row.children.length || 7);
     this.fitRow();
     if (!this._fitBound) {
       this._fitBound = true;
@@ -162,18 +161,24 @@ const Widgets = {
     if (typeof I18n !== 'undefined') I18n.applyLang(I18n.lang);
   },
 
-  /* keep widgets docked at the bottom: always one row — user scale wins, scroll if it overflows */
+  /* Smart fit: cards share the row proportionally; layout width compensates for zoom
+     so the visual row always fills the screen edge-to-edge — zooming never overflows. */
   fitRow() {
     const row = document.getElementById('widgets-row');
     if (!row || !row.children.length) return;
-    const avail = row.clientWidth, need = row.scrollWidth;
+    const avail = row.parentElement.clientWidth - 48;        /* wrap padding */
     const sb = document.querySelector('.searchbar');
     const sbBottom = sb ? sb.getBoundingClientRect().bottom : innerHeight * .45;
-    const roomH = innerHeight - 112 - sbBottom;               /* 108 dock offset + breathing room */
-    let sc = Store.state.settings.scale || 1;
-    if (row.offsetHeight * sc > roomH) sc = Math.min(sc, Math.max(.76, roomH / row.offsetHeight));  /* only guard: never collide with the clock */
-    row.style.transform = `scale(${sc})`;
-    row.classList.toggle('of', need * sc > avail + 2);
+    const roomH = innerHeight - 112 - sbBottom;               /* dock offset + breathing room */
+    let z = Store.state.settings.scale || 1;
+    for (let i = 0; i < 3; i++) {
+      row.style.width = (avail / z) + 'px';
+      const H = row.offsetHeight;
+      if (H * z <= roomH + 1) break;                          /* fits vertically — done */
+      z = Math.max(.7, Math.min(z, roomH / Math.max(H, 1)));  /* never collide with the clock */
+    }
+    row.style.transform = `scale(${z})`;
+    row.classList.toggle('of', row.scrollWidth > row.clientWidth + 2);
   },
 
   build(id) {
@@ -246,13 +251,14 @@ const Widgets = {
     const myToday = this.myEvents().filter(e => e.d === tkey);
     card.querySelector('#cal-my').innerHTML = myToday.length
       ? '<div class="cal-next-title">' + I18n.t('ev_today') + '</div>' +
-        myToday.map(e => '<div class="cal-next-row my"><span class="cal-next-name">📌 ' + String(e.t).replace(/</g, '&lt;') + '</span></div>').join('')
+        myToday.slice(0, 2).map(e => '<div class="cal-next-row my"><span class="cal-next-name">📌 ' + String(e.t).replace(/</g, '&lt;') + '</span></div>').join('') +
+        (myToday.length > 2 ? '<div class="cal-next-row my"><span class="cal-next-name" style="opacity:.55">+' + (I18n.lang === 'fa' ? Jalali.toFaDigits(String(myToday.length - 2)) : (myToday.length - 2)) + ' …</span></div>' : '')
       : '';
     /* upcoming: merge official holidays + personal events (next 45 days) */
     const upcoming = [];
     let d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
     const my = this.myEvents();
-    for (let i = 0; i < 45 && upcoming.length < 4; i++) {
+    for (let i = 0; i < 45 && upcoming.length < 3; i++) {
       const hj = Jalali.toJalali(d);
       const k = Jalali.key(hj.jy, hj.jm, hj.jd);
       const off = Jalali.eventOf(hj.jy, hj.jm, hj.jd);
@@ -261,7 +267,7 @@ const Widgets = {
       d = new Date(d.getTime() + 86400000);
     }
     card.querySelector('#cal-next').innerHTML = upcoming.length
-      ? '<div class="cal-next-title">' + I18n.t('cal_upcoming') + '</div>' + upcoming.slice(0, 4).map(u =>
+      ? '<div class="cal-next-title">' + I18n.t('cal_upcoming') + '</div>' + upcoming.slice(0, 3).map(u =>
           '<div class="cal-next-row"><span class="cal-next-date">' + Jalali.fmt(u.date) + '</span><span class="cal-next-name">' +
           (u.kind === 'off' ? '🔴 ' : '📌 ') + String(u.name).replace(/</g, '&lt;') + '</span></div>').join('')
       : '';
